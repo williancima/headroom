@@ -1,0 +1,47 @@
+// What the customization menus and drags need, as plain data. Pure (no gi imports), so it runs under node or gjs.
+// Mirrors crates/headroom-app/src/layout_logic.rs.
+
+// What each row of a group is, for the drags: {type: 'header', cardId}, {type: 'metric', cardId | null} or null.
+export function roles(group) {
+    let account = null;
+    return (group.rows ?? []).map(row => {
+        const id = row.id ?? null;
+        const cardId = row.card_id ?? null;
+        if (id === null && cardId !== null && !row.resets?.length && !row.breakdown) {
+            account = cardId;
+            return {type: 'header', cardId};
+        }
+        if (id !== null)
+            return {type: 'metric', cardId: group.unified || row.members?.length ? null : account};
+        return null;
+    });
+}
+
+// The line ids Pin and Hide act on: every account's copy on a unified row; null on a row that is no metric.
+export function menuIds(row) {
+    if (!row.id)
+        return null;
+    return row.copy_ids?.length ? row.copy_ids : [row.id];
+}
+
+// A metric's label is what follows its account in the line id ("claude@1a2b3c4d/Weekly" -> "Weekly").
+export function metricLabel(id, cardId) {
+    return id.startsWith(`${cardId}/`) ? id.slice(cardId.length + 1) : id;
+}
+
+// What a drag carries: {type: 'metric', cardId, label} | {type: 'account', cardId} | {type: 'provider', kind}.
+// The [action, signature, args] a drop on `target` calls; null across types, or across accounts for metrics.
+export function dropAction(dragged, target) {
+    if (dragged.type !== target.type)
+        return null;
+    switch (dragged.type) {
+    case 'metric':
+        return dragged.cardId === target.cardId ? ['move-metric', '(sss)', [dragged.cardId, dragged.label, target.label]] : null;
+    case 'account':
+        return ['move-account', '(ss)', [dragged.cardId, target.cardId]];
+    case 'provider':
+        return ['move-provider', '(ss)', [dragged.kind, target.kind]];
+    default:
+        return null;
+    }
+}

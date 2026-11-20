@@ -1,0 +1,6 @@
+{
+  "uuid": "headroom@headroom.dev",
+  "name": "Headroom",
+  "description": "Shows the usage limits of your AI coding accounts in the top bar. Needs the headroom CLI and headroom-app.",
+  "shell-version": ["46", "47", "48", "49", "50", "51"]
+}

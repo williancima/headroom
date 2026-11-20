@@ -1,0 +1,23 @@
+dist/
+*.log
+
+# Local environment files
+.env
+.env.*
+
+# Rust
+/target
+
+# Serena (local)
+.serena/
+
+# AppImage tool cache
+/.cache/
+
+# Local plans: kept in the project folder, never in git
+PLAN.md
+plans/
+
+# Local agent environment, never in git
+LESSONS.md
+CLAUDE.local.md

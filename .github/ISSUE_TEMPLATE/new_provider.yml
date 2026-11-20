@@ -1,0 +1,48 @@
+name: New Provider Request
+description: Ask for support for another AI service, or offer to add it
+labels: ["provider"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to suggest a service Headroom should track.
+        A plain request is fine, and so is a pull request that implements it.
+  - type: input
+    id: provider_name
+    attributes:
+      label: Provider Name
+      placeholder: "e.g. Gemini, Perplexity, Mistral"
+    validations:
+      required: true
+  - type: input
+    id: provider_url
+    attributes:
+      label: Provider Website
+      placeholder: "https://..."
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Which usage data is available?
+      description: List the limits and usage figures the provider's API returns, and how users sign in (OAuth, device code, API key). Headroom only uses what the API gives a signed-in account; it never scrapes web dashboards or reads files from other tools. Name the sign-in method only, and never paste real keys, tokens, or cookies.
+      placeholder: |
+        - Monthly request limit: 500
+        - Endpoint: GET https://api.provider.com/v1/usage
+        - Sign-in: API key
+    validations:
+      required: true
+  - type: dropdown
+    id: will_build
+    attributes:
+      label: Do you plan to implement it?
+      options:
+        - "Yes, I will open a PR"
+        - "No, I only want to suggest it"
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Extra Details
+      description: Links to API documentation, screenshots of the provider's usage page, or other helpful material.

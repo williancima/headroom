@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Headroom
+Comment=Usage limits of your AI coding accounts
+Exec=headroom-app
+Icon=dev.headroom.Headroom
+Categories=Utility;
+StartupNotify=false
+X-GNOME-UsesNotifications=true
