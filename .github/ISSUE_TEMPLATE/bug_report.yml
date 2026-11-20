@@ -1,0 +1,89 @@
+name: Bug Report
+description: Something in Headroom is broken or behaves wrongly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search the open issues first, then describe the problem below.
+        Never paste tokens, API keys, or cookies into this form.
+  - type: textarea
+    id: description
+    attributes:
+      label: Summary
+      description: Describe the problem in a few sentences.
+      placeholder: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Steps
+      description: The shortest path that triggers the problem.
+      placeholder: |
+        1. Start headroom-app
+        2. Open the Accounts window
+        3. Add an account for ...
+        4. Notice that ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you thought would happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What happened instead. Paste any error text shown in the app.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Headroom Version
+      description: Shown in the app, or by running `headroom --version`.
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and Desktop
+      description: Your distribution release and desktop session type.
+      placeholder: "e.g. Fedora 41, GNOME 47 on Wayland"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Part
+      options:
+        - Panel or Accounts window
+        - Tray icon
+        - GNOME Shell extension
+        - CLI
+        - Notifications
+        - Not sure
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed From
+      options:
+        - .deb package
+        - AppImage
+        - Built from source
+        - Other
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Paste or drop images if they help show the problem.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Extra Details
+      description: Logs (with secrets removed), related providers, or anything else worth knowing.

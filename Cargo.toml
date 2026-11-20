@@ -1,0 +1,6 @@
+[workspace]
+members = ["crates/headroom-core", "crates/headroom-cli", "crates/headroom-app"]
+resolver = "2"
+
+[patch.crates-io]
+ksni = { path = "vendor/ksni" }

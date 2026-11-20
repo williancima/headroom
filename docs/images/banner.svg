@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c2b45"/>
+      <stop offset="1" stop-color="#0d1524"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#62a0ea"/>
+      <stop offset="1" stop-color="#1c71d8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.17" cy="0.5" r="0.45">
+      <stop offset="0" stop-color="#3584e4" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#3584e4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="320" rx="28" fill="url(#bg)"/>
+  <rect width="1280" height="320" rx="28" fill="url(#glow)"/>
+
+  <!-- App icon, 1.25x -->
+  <g transform="translate(72 80) scale(1.25)">
+    <rect x="12" y="16" width="104" height="100" rx="24" fill="#1a5fb4"/>
+    <rect x="12" y="12" width="104" height="100" rx="24" fill="url(#face)"/>
+    <path d="M28 78 A36 36 0 0 1 100 78" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="12" stroke-linecap="round"/>
+    <path d="M28 78 A36 36 0 0 1 80.3 45.9" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round"/>
+    <path d="M64 78 L76.7 53.1" stroke="#ffa348" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="64" cy="78" r="7" fill="#ffa348"/>
+    <circle cx="64" cy="78" r="2.5" fill="#1c71d8"/>
+  </g>
+
+  <g font-family="Cantarell, Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="262" y="160" font-size="76" font-weight="700" fill="#ffffff">Headroom</text>
+    <text x="264" y="208" font-size="28" fill="#c0cbe0">Usage limits of your AI coding accounts, on Linux.</text>
+  </g>
+
+  <!-- Usage meters -->
+  <g font-family="Cantarell, Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20">
+    <g transform="translate(980 92)">
+      <text fill="#ffffff" font-weight="700">Session</text>
+      <text x="220" text-anchor="end" fill="#c0cbe0">44%</text>
+      <rect y="14" width="220" height="8" rx="4" fill="#ffffff" fill-opacity="0.15"/>
+      <rect y="14" width="97" height="8" rx="4" fill="#3584e4"/>
+    </g>
+    <g transform="translate(980 160)">
+      <text fill="#ffffff" font-weight="700">Weekly</text>
+      <text x="220" text-anchor="end" fill="#c0cbe0">17%</text>
+      <rect y="14" width="220" height="8" rx="4" fill="#ffffff" fill-opacity="0.15"/>
+      <rect y="14" width="37" height="8" rx="4" fill="#3584e4"/>
+    </g>
+    <g transform="translate(980 228)">
+      <text fill="#ffffff" font-weight="700">Credits</text>
+      <text x="220" text-anchor="end" fill="#c0cbe0">86%</text>
+      <rect y="14" width="220" height="8" rx="4" fill="#ffffff" fill-opacity="0.15"/>
+      <rect y="14" width="189" height="8" rx="4" fill="#ffa348"/>
+    </g>
+  </g>
+</svg>

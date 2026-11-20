@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config appstream zip
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check the tag matches the app version
+        if: github.ref_type == 'tag'
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' crates/headroom-app/Cargo.toml | head -n 1)
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match crates/headroom-app version $version" >&2
+            exit 1
+          fi
+      - name: Check the tag has release notes
+        if: github.ref_type == 'tag'
+        run: |
+          git fetch --force origin "+refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != tag ]; then
+            echo "$GITHUB_REF_NAME is not an annotated tag" >&2
+            exit 1
+          fi
+          if [ -z "$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | tr -d '[:space:]')" ]; then
+            echo "The tag message is empty; releases must have notes" >&2
+            exit 1
+          fi
+      - name: Validate metainfo
+        run: appstreamcli validate --no-net data/dev.headroom.Headroom.metainfo.xml
+      - run: cargo build --release --workspace
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb
+      - run: cargo deb -p headroom-app --no-build
+      - run: scripts/appimage.sh
+      - name: Zip the extension
+        run: |
+          cd extension
+          zip -r ../headroom@headroom.dev.shell-extension.zip metadata.json stylesheet.css icons *.js
+      - name: Collect release files
+        run: |
+          mkdir -p release
+          cp target/debian/*.deb dist/Headroom-x86_64.AppImage headroom@headroom.dev.shell-extension.zip release/
+          (cd release && sha256sum -- * > SHA256SUMS)
+      - name: Create the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag release/*
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: headroom-release
+          path: release/*

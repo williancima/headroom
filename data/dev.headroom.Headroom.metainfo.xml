@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.headroom.Headroom</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Headroom</name>
+  <summary>Usage limits of your AI coding accounts</summary>
+  <developer id="dev.headroom">
+    <name>Willian Cima</name>
+  </developer>
+  <description>
+    <p>Headroom shows how much of each AI plan you have used: session and weekly limits, credits, and balances, in one panel, with the limits closest to running out in the tray or the GNOME Shell top bar.</p>
+    <p>It supports Claude, ChatGPT, Cursor, Amp, Antigravity, Copilot, Devin, Grok, Muse Code, Ollama, OpenCode, OpenRouter, and Z.ai, plus the logins of a CLIProxyAPI server.</p>
+  </description>
+  <launchable type="desktop-id">dev.headroom.Headroom.desktop</launchable>
+  <url type="homepage">https://github.com/williancima/headroom</url>
+  <url type="bugtracker">https://github.com/williancima/headroom/issues</url>
+  <provides>
+    <binary>headroom-app</binary>
+    <binary>headroom</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-20"/>
+  </releases>
+</component>

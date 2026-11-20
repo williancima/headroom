@@ -1,0 +1,34 @@
+name: Feature Request
+description: Propose an improvement to Headroom
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Look through existing issues for the same idea before filing a new one.
+        Headroom only tracks the usage limits of AI coding accounts, so ideas beyond that are out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is missing or annoying today?
+      placeholder: When I use Headroom, I can't ...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you would like it to behave.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other options you looked at, and why you prefer this one.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Extra Details
+      description: Sketches, links, or other material that clarifies the request.

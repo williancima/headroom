@@ -1,0 +1,30 @@
+.headroom-menu { min-width: 360px; max-width: 360px; }
+.headroom-switch { spacing: 6px; padding: 6px 12px; }
+.headroom-tab { padding: 4px 12px; border-radius: 99px; background-color: rgba(128, 128, 128, 0.15); }
+.headroom-tab:hover { background-color: rgba(128, 128, 128, 0.3); }
+.headroom-tab-active { background-color: rgba(128, 128, 128, 0.4); font-weight: bold; }
+.headroom-list { spacing: 6px; }
+.headroom-scroll { padding: 0 12px; }
+.headroom-group-title { font-weight: bold; font-size: 0.9em; padding-top: 6px; opacity: 180; }
+.headroom-card { padding: 8px 10px; border-radius: 8px; background-color: rgba(128, 128, 128, 0.12); spacing: 2px; }
+.headroom-card-title { font-weight: bold; }
+.headroom-card-subtitle { font-size: 0.85em; opacity: 170; }
+.headroom-card-value { font-weight: bold; }
+.headroom-meter { height: 4px; border-radius: 2px; background-color: rgba(128, 128, 128, 0.3); margin-top: 4px; }
+.headroom-meter-fill { height: 4px; border-radius: 2px; background-color: #3584e4; }
+.headroom-error { padding: 8px 10px; border-radius: 8px; background-color: rgba(220, 50, 50, 0.2); spacing: 2px; }
+.headroom-footer { padding: 6px 12px; spacing: 8px; }
+.headroom-updated { font-size: 0.85em; opacity: 170; }
+.headroom-button { padding: 4px 10px; border-radius: 6px; background-color: rgba(128, 128, 128, 0.2); }
+.headroom-button:hover { background-color: rgba(128, 128, 128, 0.4); }
+.headroom-card-chevron { margin-left: 6px; opacity: 170; }
+.headroom-icon-button { padding: 8px; border-radius: 999px; background-color: rgba(128, 128, 128, 0.2); }
+.headroom-icon-button:hover, .headroom-icon-button:focus { background-color: rgba(128, 128, 128, 0.4); }
+.headroom-resets { spacing: 6px; padding-top: 6px; }
+.headroom-reset { padding: 6px 8px; border-radius: 6px; background-color: rgba(128, 128, 128, 0.12); spacing: 2px; }
+.headroom-reset-buttons { spacing: 8px; padding-top: 4px; }
+.headroom-resets-message { font-size: 0.85em; font-weight: bold; }
+.headroom-button-primary { background-color: #3584e4; color: #ffffff; }
+.headroom-breakdown { spacing: 4px; padding-top: 6px; }
+.headroom-breakdown-heading { padding-top: 6px; }
+.headroom-drag { padding: 6px 10px; border-radius: 8px; background-color: #3584e4; color: #ffffff; font-weight: bold; }

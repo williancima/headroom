@@ -1,0 +1,15 @@
+provider:
+  - changed-files:
+      - any-glob-to-any-file: "crates/headroom-core/src/{amp,antigravity,claude,codex,copilot,cursor,devin,grok,hub,muse,ollama,opencode,openrouter,zai}/**"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "crates/**/tests.rs"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: "docs/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
