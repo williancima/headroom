@@ -11,7 +11,7 @@ pub const LATEST_URL: &str = "https://api.github.com/repos/williancima/headroom/
 pub const APPIMAGE_NAME: &str = "Headroom-x86_64.AppImage";
 pub const SUMS_NAME: &str = "SHA256SUMS";
 pub const SIG_NAME: &str = "SHA256SUMS.minisig";
-/// The release signing key. Its secret half never touches CI; the owner signs `SHA256SUMS` locally.
+/// The release signing key. The release workflow signs `SHA256SUMS` with its secret half (a repository secret).
 const PUBLIC_KEY: &str = "RWSJvReAKvMzJnvQTzV973bN63TcYQnRX56PYHpYQz7OhDvR9EyYZMQL";
 
 #[derive(Debug, Deserialize)]

@@ -30,18 +30,9 @@ Steps, once the owner has approved the number (`X.Y.Z`):
 5. `.github/workflows/release.yml` refuses a tag that doesn't match `crates/headroom-app`, isn't annotated,
    or has an empty message. It builds the .deb, the AppImage and the extension zip, writes `SHA256SUMS`,
    and publishes the release with the tag message as its notes (never as a Draft).
-6. Sign the checksum list locally (the secret key never goes to CI) with the version as the trusted
-   comment, in the default prehashed mode (never `-l`). Check it, then upload the signature. The AppImage
-   skips a release until `SHA256SUMS.minisig` is there:
-
-   ```sh
-   gh release download vX.Y.Z -p SHA256SUMS -D /tmp/hr && cd /tmp/hr
-   minisign -Sm SHA256SUMS -s <path to headroom.key> -t "headroom X.Y.Z"
-   # Must print "Trusted comment: headroom X.Y.Z":
-   minisign -Vm SHA256SUMS -P RWSJvReAKvMzJnvQTzV973bN63TcYQnRX56PYHpYQz7OhDvR9EyYZMQL
-   gh release upload vX.Y.Z SHA256SUMS.minisig
-   ```
-
+6. The same workflow signs `SHA256SUMS` with minisign (trusted comment `headroom X.Y.Z`) and publishes
+   `SHA256SUMS.minisig` with the other files; the AppImage self-update rejects a release without it. The
+   key and its password are the repository secrets `MINISIGN_SECRET_KEY` and `MINISIGN_PASSWORD`.
 7. Check the release page lists all five files, then install the .deb or AppImage in the test VM.
 
 ## Architecture
