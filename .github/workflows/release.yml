@@ -76,7 +76,7 @@ jobs:
         with:
           name: headroom-release
           path: release
-      - run: sudo apt-get update && sudo apt-get install -y minisign
+      - run: sudo apt-get update && sudo apt-get install -y minisign apt-utils
       - name: Sign the checksum list
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
@@ -90,7 +90,51 @@ jobs:
           printf '%s\n' "$MINISIGN_PASSWORD" | minisign -Sm release/SHA256SUMS -s "$key" -t "headroom $version"
           minisign -Vm release/SHA256SUMS -P RWSJvReAKvMzJnvQTzV973bN63TcYQnRX56PYHpYQz7OhDvR9EyYZMQL \
             | grep -qx "Trusted comment: headroom $version"
+      # Flat APT repository holding only the newest .deb; the .deb installs its source, key and an
+      # unattended-upgrades origin, so installs update themselves. Built and verified before anything is
+      # published, so a missing or wrong GPG secret fails the release here.
+      - name: Build and sign the APT repository
+        env:
+          APT_GPG_KEY: ${{ secrets.APT_GPG_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: |
+          umask 077
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent; rm -rf "$GNUPGHOME"' EXIT
+          pass="$GNUPGHOME/passphrase"
+          printf '%s' "$APT_GPG_PASSPHRASE" > "$pass"
+          printf '%s\n' "$APT_GPG_KEY" | gpg --batch --pinentry-mode loopback --passphrase-file "$pass" --import
+          umask 022
+          mkdir apt
+          cp release/*.deb data/apt/headroom-archive-keyring.gpg apt/
+          cd apt
+          apt-ftparchive packages . > Packages
+          gzip -9k Packages
+          apt-ftparchive -o APT::FTPArchive::Release::Origin=Headroom -o APT::FTPArchive::Release::Label=Headroom \
+            release . > Release
+          sign() { gpg --batch --pinentry-mode loopback --passphrase-file "$pass" "$@"; }
+          sign --clearsign -o InRelease Release
+          sign --armor --detach-sign -o Release.gpg Release
+          gpgv --keyring ../data/apt/headroom-archive-keyring.gpg InRelease
+          gpgv --keyring ../data/apt/headroom-archive-keyring.gpg Release.gpg Release
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag release/*
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apt
+
+  pages:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

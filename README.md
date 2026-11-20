@@ -17,7 +17,9 @@ Inspired by [OpenUsage](https://github.com/robinebers/openusage) by Robin Ebers.
 
 Download the `.deb` or the AppImage from [GitHub Releases](https://github.com/williancima/headroom/releases).
 
-- **.deb**: `sudo apt install ./headroom_*.deb`. It also installs the GNOME Shell extension system-wide.
+- **.deb**: `sudo apt install ./headroom_*.deb`. It also installs the GNOME Shell extension system-wide, and
+  adds the Headroom APT repository so the system's automatic updates keep it current; see
+  [docs/updates.md](docs/updates.md).
 - **AppImage**: `chmod +x Headroom-x86_64.AppImage` and run it. It uses the GTK4 and libadwaita of your system
   (GNOME 46 or later). On start it installs the GNOME Shell extension in your user folder and writes the
   `headroom` command the extension needs to `~/.local/bin`. It also updates itself; see

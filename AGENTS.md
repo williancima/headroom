@@ -33,7 +33,12 @@ Steps, once the owner has approved the number (`X.Y.Z`):
 6. The same workflow signs `SHA256SUMS` with minisign (trusted comment `headroom X.Y.Z`) and publishes
    `SHA256SUMS.minisig` with the other files; the AppImage self-update rejects a release without it. The
    key and its password are the repository secrets `MINISIGN_SECRET_KEY` and `MINISIGN_PASSWORD`.
-7. Check the release page lists all five files, then install the .deb or AppImage in the test VM.
+7. It also builds a flat APT repository holding the new .deb, signs it with the GPG key in the secrets
+   `APT_GPG_KEY` and `APT_GPG_PASSPHRASE` (public half: `data/apt/headroom-archive-keyring.gpg`, shipped in
+   the .deb), and deploys it to GitHub Pages (`https://williancima.github.io/headroom/`). The `github-pages`
+   environment allows `v*` tags.
+8. Check the release page lists all five files and the Pages deploy succeeded, then install the .deb or
+   AppImage in the test VM.
 
 ## Architecture
 

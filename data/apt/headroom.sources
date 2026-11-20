@@ -1,0 +1,4 @@
+Types: deb
+URIs: https://williancima.github.io/headroom/
+Suites: ./
+Signed-By: /etc/apt/keyrings/headroom-archive-keyring.gpg

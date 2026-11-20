@@ -40,4 +40,8 @@ assets = [
   ["../../extension/metadata.json", "usr/share/gnome-shell/extensions/headroom@headroom.dev/", "644"],
   ["../../extension/stylesheet.css", "usr/share/gnome-shell/extensions/headroom@headroom.dev/", "644"],
   ["../../extension/icons/*", "usr/share/gnome-shell/extensions/headroom@headroom.dev/icons/", "644"],
+  # Files under etc/ become conffiles: kept on remove, deleted on purge.
+  ["../../data/apt/headroom-archive-keyring.gpg", "etc/apt/keyrings/", "644"],
+  ["../../data/apt/headroom.sources", "etc/apt/sources.list.d/", "644"],
+  ["../../data/apt/52headroom-unattended", "etc/apt/apt.conf.d/", "644"],
 ]

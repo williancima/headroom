@@ -1,0 +1,2 @@
+// Lets unattended-upgrades install Headroom updates from its APT repository.
+Unattended-Upgrade::Origins-Pattern { "origin=Headroom"; };

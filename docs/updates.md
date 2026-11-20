@@ -16,6 +16,18 @@ if one is set.
 - A failed check or download (network, bad signature or checksum) deletes the partial `.part` file, logs a short line and
   tries again in 6 hours. Nothing is shown in the window.
 
+## .deb
+
+The package adds the Headroom APT repository (`https://williancima.github.io/headroom/`) with its signing
+key, and lets unattended-upgrades install from it. Ubuntu's daily automatic upgrade then installs new versions
+like any other package; `sudo apt upgrade` does the same by hand. Files it adds:
+
+- `/etc/apt/sources.list.d/headroom.sources`
+- `/etc/apt/keyrings/headroom-archive-keyring.gpg`
+- `/etc/apt/apt.conf.d/52headroom-unattended`
+
+`sudo apt purge headroom` deletes them; `sudo apt remove headroom` keeps them, like any configuration file.
+
 ## Restart after an update
 
 Every minute the app checks whether its own file was replaced on disk (what a package upgrade does). If so,

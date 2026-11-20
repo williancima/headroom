@@ -32,8 +32,8 @@ Both folders follow `XDG_CONFIG_HOME` and `XDG_STATE_HOME`. Nothing syncs anywhe
 ## What leaves your machine
 
 Requests go only to the provider of each account (and to a hub you connected, with its management key). A
-ChatGPT sign-in listens on `127.0.0.1:1455` only while it waits for the browser. Headroom sends no analytics,
-crash reports, or update checks.
+ChatGPT sign-in listens on `127.0.0.1:1455` only while it waits for the browser. Headroom sends no analytics or
+crash reports. Update checks are described in [Updates](updates.md).
 
 The [`headroom` command](cli.md) `usage` and `panel` read only the saved files: no network request, no
 Secret Service access. `usage --refresh` and `accounts add` do both.
