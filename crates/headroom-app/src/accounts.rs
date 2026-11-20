@@ -19,6 +19,7 @@ pub const TAG: &str = "accounts";
 
 pub struct AccountsPage {
     pub page: adw::NavigationPage,
+    content: gtk::Stack,
     accounts: adw::PreferencesGroup,
     hubs: adw::PreferencesGroup,
     account_rows: RefCell<Vec<adw::PreferencesRow>>,
@@ -36,6 +37,10 @@ impl AccountsPage {
         body.append(&accounts);
         body.append(&hubs);
         let clamp = adw::Clamp::builder().child(&body).margin_top(12).margin_bottom(12).margin_start(12).margin_end(12).build();
+        // With nothing saved the page would be blank (e.g. Back from the picker opened by the dashboard).
+        let content = gtk::Stack::new();
+        content.add_named(&gtk::ScrolledWindow::builder().child(&clamp).vexpand(true).build(), Some("list"));
+        content.add_named(&crate::panel::empty_state(&input), Some("empty"));
         let add = gtk::Button::from_icon_name("list-add-symbolic");
         add.update_property(&[gtk::accessible::Property::Label("Add Account")]);
         add.connect_clicked(move |_| {
@@ -45,9 +50,9 @@ impl AccountsPage {
         header.pack_end(&add);
         let view = adw::ToolbarView::new();
         view.add_top_bar(&header);
-        view.set_content(Some(&gtk::ScrolledWindow::builder().child(&clamp).vexpand(true).build()));
+        view.set_content(Some(&content));
         let page = adw::NavigationPage::builder().child(&view).title("Accounts").tag(TAG).build();
-        Self { page, accounts, hubs, account_rows: RefCell::default(), hub_rows: RefCell::default(), expanded: Rc::default(), commands }
+        Self { page, content, accounts, hubs, account_rows: RefCell::default(), hub_rows: RefCell::default(), expanded: Rc::default(), commands }
     }
 
     pub fn show(&self, model: &PanelModel) {
@@ -105,6 +110,8 @@ impl AccountsPage {
             built.push(action.upcast());
         }
         replace(&self.hubs, &self.hub_rows, built);
+        let empty = self.account_rows.borrow().is_empty() && self.hub_rows.borrow().is_empty();
+        self.content.set_visible_child_name(if empty { "empty" } else { "list" });
     }
 }
 

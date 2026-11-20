@@ -75,6 +75,22 @@ pub struct Panel {
     _hold: gio::ApplicationHoldGuard,
 }
 
+/// "No Accounts" with an Add Account button, shared by the dashboard and the Accounts page.
+pub fn empty_state(input: &relm4::Sender<PanelMsg>) -> adw::StatusPage {
+    let empty = adw::StatusPage::builder()
+        .icon_name("avatar-default-symbolic")
+        .title("No Accounts")
+        .description("Add an account to see its usage here.")
+        .build();
+    let add = gtk::Button::builder().label("Add Account").halign(gtk::Align::Center).css_classes(["suggested-action", "pill"]).build();
+    let input = input.clone();
+    add.connect_clicked(move |_| {
+        let _ = input.send(PanelMsg::AddAccount);
+    });
+    empty.set_child(Some(&add));
+    empty
+}
+
 /// A tab: its groups, or a status page while there are no accounts.
 struct Page {
     root: gtk::Stack,
@@ -87,17 +103,7 @@ impl Page {
         let groups = gtk::Box::builder().orientation(gtk::Orientation::Vertical).spacing(18).valign(gtk::Align::Start).build();
         let clamp = adw::Clamp::builder().child(&groups).margin_top(12).margin_bottom(12).margin_start(12).margin_end(12).build();
         let list = gtk::ScrolledWindow::builder().child(&clamp).vexpand(true).build();
-        let empty = adw::StatusPage::builder()
-            .icon_name("avatar-default-symbolic")
-            .title("No Accounts")
-            .description("Add an account to see its usage here.")
-            .build();
-        let add = gtk::Button::builder().label("Add Account").halign(gtk::Align::Center).css_classes(["suggested-action", "pill"]).build();
-        let input = input.clone();
-        add.connect_clicked(move |_| {
-            let _ = input.send(PanelMsg::AddAccount);
-        });
-        empty.set_child(Some(&add));
+        let empty = empty_state(input);
         let root = gtk::Stack::new();
         root.add_named(&list, Some("list"));
         root.add_named(&empty, Some("empty"));
