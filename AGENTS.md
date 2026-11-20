@@ -90,8 +90,9 @@ CARGO_INCREMENTAL=0 cargo clippy --workspace --all-targets -j 2 -- -D warnings
 for t in extension/*.test.mjs; do node "$t"; done
 ```
 
-**Never install or run Headroom on the development machine itself.** No `headroom-app`, no extension
-install, no `~/.local/bin` link, no `.desktop` file, no keybinding, no credentials in the host keyring.
+**Never run development builds on the host.** No `headroom-app` or `headroom` from `target/`, no extension
+install from the repo, no `~/.local/bin` link to a build. A released .deb or AppImage the owner installs on
+the host is normal use: leave it, its settings and its credentials alone, and never stop or restart it.
 Building and the commands above are fine on the host. Every live check (app, panel, extension, sign-in,
 shortcut, notifications) runs inside the QEMU VM from `scripts/vm.sh` (`create`, then `start`; it
 mounts the repo at `/mnt/headroom`, so the VM runs the host's `target/release` build). Sign in to
