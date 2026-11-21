@@ -57,6 +57,12 @@ them.
 `headroom` reads the same files the app writes. `accounts add`, `hubs add`, and `usage --refresh` call into
 core directly, so they work with the app closed. `panel` and plain `usage` never fetch.
 
+## Provider icons
+
+`extension/icons/headroom-provider-<id>-symbolic.svg` (one per `ProviderKind::id()`, plus `cliproxyapi` for a hub)
+is the only copy. The extension ships the files; `crates/headroom-app/build.rs` bundles them as a GResource that
+`icons::register` adds to the icon theme. `Row.kind` in the panel JSON tells which icon a row shows.
+
 ## The extension
 
 It never fetches. It runs `headroom panel` and draws the JSON, and its buttons call the app's actions. The

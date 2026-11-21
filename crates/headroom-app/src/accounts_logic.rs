@@ -6,6 +6,9 @@ use headroom_core::hub::Hub;
 use headroom_core::login::LoginError;
 use headroom_core::{Account, ProviderKind};
 
+/// The id of the CLIProxyAPI hub icon.
+pub const HUB_ICON: &str = "cliproxyapi";
+
 /// A row of the provider picker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Choice {
@@ -20,6 +23,14 @@ impl Choice {
             Self::Hub => "CLIProxyAPI",
         }
     }
+
+    /// The id its icon is named after.
+    pub fn icon_id(self) -> &'static str {
+        match self {
+            Self::Provider(kind) => kind.id(),
+            Self::Hub => HUB_ICON,
+        }
+    }
 }
 
 /// Every provider in catalog order, then the hub.
@@ -32,6 +43,8 @@ pub struct AccountRow {
     pub card_id: String,
     pub title: String,
     pub subtitle: String,
+    /// The provider's `ProviderKind::id()`.
+    pub kind: &'static str,
     /// Hub accounts leave with their hub.
     pub removable: bool,
 }
@@ -46,7 +59,7 @@ pub fn account_rows(accounts: &[Account]) -> Vec<AccountRow> {
                 Some(link) => (format!("Via {}. Removed with its hub.", link.host()), false),
                 None => (String::new(), true),
             };
-            AccountRow { card_id: a.card_id(), title: a.full_name(), subtitle, removable }
+            AccountRow { card_id: a.card_id(), title: a.full_name(), subtitle, kind: a.kind.id(), removable }
         })
         .collect()
 }
@@ -100,6 +113,15 @@ mod tests {
     use super::*;
     use headroom_core::hub::{HubLink, HubLogin};
     use uuid::Uuid;
+
+    #[test]
+    fn every_picker_choice_has_an_icon_file() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extension/icons");
+        for choice in picker() {
+            let file = dir.join(format!("headroom-provider-{}-symbolic.svg", choice.icon_id()));
+            assert!(file.exists(), "{} is missing", file.display());
+        }
+    }
 
     fn hub_account(hub: &Hub) -> Account {
         let mut a = Account::new(ProviderKind::Claude, "work");

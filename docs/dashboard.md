@@ -38,7 +38,8 @@ to All Usage.
 ## All Usage
 
 Each provider gets a card containing its accounts, and each account lists its name, plan, and metrics. A card
-includes all metrics that have data and that you have not hidden, in your chosen order.
+includes all metrics that have data and that you have not hidden, in your chosen order. Each account's name
+(and a unified card's) and each Priority row shows the provider's icon.
 
 - Time ranges are always displayed, showing 0 when the provider reports nothing.
 - Balances are displayed even at `$0 left`.

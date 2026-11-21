@@ -1,6 +1,6 @@
 // Run: node extension/layout_logic.test.mjs
 import assert from 'node:assert/strict';
-import {roles, menuIds, metricLabel, dropAction} from './layout_logic.js';
+import {roles, menuIds, metricLabel, dropAction, providerIconFile} from './layout_logic.js';
 
 const group = {kind: 'claude', unified: false, rows: [
     {title: 'Claude · a', card_id: 'c1'},
@@ -30,4 +30,5 @@ assert.equal(dropAction(m('c1', 'A'), m('c2', 'B')), null);
 assert.deepEqual(dropAction({type: 'account', cardId: 'c1'}, {type: 'account', cardId: 'c2'}), ['move-account', '(ss)', ['c1', 'c2']]);
 assert.deepEqual(dropAction({type: 'provider', kind: 'claude'}, {type: 'provider', kind: 'codex'}), ['move-provider', '(ss)', ['claude', 'codex']]);
 assert.equal(dropAction({type: 'account', cardId: 'c1'}, {type: 'provider', kind: 'x'}), null);
+assert.equal(providerIconFile('claude'), 'icons/headroom-provider-claude-symbolic.svg');
 console.log('ok');

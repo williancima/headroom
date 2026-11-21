@@ -28,6 +28,8 @@ gnome-extensions pack extension/ --force --out-dir /tmp \
 gnome-extensions install --force /tmp/headroom@headroom.dev.shell-extension.zip
 ```
 
+The dropdown shows each provider's icon from `icons/headroom-provider-<id>-symbolic.svg` next to its cards.
+
 On Wayland, log out and back in, then `gnome-extensions enable headroom@headroom.dev` (a source install
 is not enabled by the app until it has run once with the extension in place).
 

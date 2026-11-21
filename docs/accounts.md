@@ -6,7 +6,8 @@ the accounts you add; it never looks for credentials of other tools.
 
 ## Add an account
 
-1. Click **Add Account** and pick a provider. Copilot first asks for **Sign In with GitHub** (your own seat,
+1. Click **Add Account** and pick a provider (each shows its icon, as do the accounts and hubs listed on the
+   Accounts screen). Copilot first asks for **Sign In with GitHub** (your own seat,
    with an optional GHE.com domain) or **Organization Billing** (an organization's credits and spend).
 2. Finish the sign-in:
 

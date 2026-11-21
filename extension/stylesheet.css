@@ -1,4 +1,4 @@
-.headroom-menu { min-width: 360px; max-width: 360px; }
+.headroom-menu { min-width: 384px; max-width: 384px; }
 .headroom-switch { padding: 6px 12px; }
 .headroom-track { padding: 3px; border-radius: 99px; background-color: rgba(128, 128, 128, 0.15); }
 .headroom-tab { padding: 4px 12px; border-radius: 99px; opacity: 150; }
@@ -30,3 +30,4 @@
 .headroom-breakdown { spacing: 4px; padding-top: 6px; }
 .headroom-breakdown-heading { padding-top: 6px; }
 .headroom-drag { padding: 6px 10px; border-radius: 8px; background-color: #3584e4; color: #ffffff; font-weight: bold; }
+.headroom-card-icon { margin-right: 8px; }

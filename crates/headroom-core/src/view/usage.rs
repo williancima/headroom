@@ -55,7 +55,7 @@ fn account_rows(model: &PanelModel, account: &Account) -> Vec<Row> {
     let card_id = account.card_id();
     let snapshot = model.snapshots.get(&card_id);
     let plan = snapshot.and_then(|s| s.plan.clone());
-    let mut rows = vec![Row { title: account.full_name(), subtitle: join([plan, status_text(model, account)]), card_id: Some(card_id.clone()), ..Row::default() }];
+    let mut rows = vec![Row { title: account.full_name(), subtitle: join([plan, status_text(model, account)]), card_id: Some(card_id.clone()), kind: account.kind.id().into(), ..Row::default() }];
     let Some(snapshot) = snapshot else { return rows };
     rows.extend(snapshot.notice.iter().map(|n| Row { title: n.clone(), ..Row::default() }));
     for line in shown_lines(model, account) {

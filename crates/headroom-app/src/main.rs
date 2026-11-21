@@ -5,6 +5,7 @@ mod accounts;
 mod accounts_logic;
 mod add;
 mod history_row;
+mod icons;
 mod layout_apply;
 mod layout_logic;
 mod layout_menu;

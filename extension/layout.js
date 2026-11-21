@@ -1,9 +1,28 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
-import {dropAction} from './layout_logic.js';
+import {dropAction, providerIconFile} from './layout_logic.js';
+
+// A label that wraps instead of ellipsizing.
+export function wrap(label) {
+    label.clutter_text.line_wrap = true;
+    label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+    return label;
+}
+
+// The provider's icon, left of a card's title; the extension ships the SVGs the app bundles.
+export function providerIcon(dir, kind) {
+    return new St.Icon({
+        gicon: Gio.icon_new_for_string(dir.get_child(providerIconFile(kind)).get_path()),
+        icon_size: 16,
+        style_class: 'headroom-card-icon',
+        y_align: Clutter.ActorAlign.START,
+    });
+}
 
 // A vertical St.BoxLayout. `vertical: true` is removed in GNOME 51 and `orientation` does not exist before 48, so set
 // the orientation on the layout manager, which works on every supported version.

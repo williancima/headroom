@@ -1,6 +1,7 @@
 //! The Accounts page: saved accounts and hubs, each with a Remove that asks first.
 
-use crate::accounts_logic::{account_rows, hub_removal_body, hub_rows, count_text};
+use crate::accounts_logic::{account_rows, hub_removal_body, hub_rows, count_text, HUB_ICON};
+use crate::icons;
 use crate::layout_logic::{metric_settings, Drag, MetricSetting};
 use crate::layout_menu::activate;
 use crate::reorder::make_reorderable;
@@ -64,6 +65,7 @@ impl AccountsPage {
                 .subtitle(glib::markup_escape_text(&row.subtitle))
                 .expanded(self.expanded.borrow().contains(&row.card_id))
                 .build();
+            expander.add_prefix(&icons::provider_icon(row.kind));
             let (expanded, id) = (self.expanded.clone(), row.card_id.clone());
             expander.connect_expanded_notify(move |r| {
                 if r.is_expanded() {
@@ -97,6 +99,7 @@ impl AccountsPage {
         let mut built = Vec::new();
         for row in rows {
             let action = adw::ActionRow::builder().title(glib::markup_escape_text(&row.host)).subtitle(glib::markup_escape_text(&row.subtitle)).build();
+            action.add_prefix(&icons::provider_icon(HUB_ICON));
             let commands = self.commands.clone();
             let (heading, body, label, id) = (
                 format!("Remove the Hub at {}?", row.host),

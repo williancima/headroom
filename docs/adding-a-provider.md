@@ -36,6 +36,9 @@ An API-key provider has no `login.rs`; `login::add_api_key` checks the key with 
 - `crates/headroom-cli/src/main.rs`: add the name to the `--help` text and the "supported" message. The Add
   Account screen lists every kind in `ProviderKind::ALL`, so the panel needs no change.
 
+- `extension/icons/headroom-provider-<id>-symbolic.svg`: the provider's monochrome, fill-only icon. The app
+  bundles it at build time and the extension ships it; a test fails while it is missing.
+
 ## 4. Defaults
 
 - Every metric with data shows. Confirm the metric order with the owner before you choose it: it is the

@@ -104,6 +104,10 @@ pub struct Row {
     /// carries it too, with no resets or breakdown.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub card_id: Option<String>,
+    /// The provider's `ProviderKind::id()`, on the row that opens a card (an account's or a unified card's header,
+    /// a Priority row); empty on the metric rows under a header.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub kind: String,
     /// The metric's line id; a unified row's own id (`"{kind}.unified/{label}"`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -164,6 +168,11 @@ fn join(parts: impl IntoIterator<Item = Option<String>>) -> String {
     parts.into_iter().flatten().filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" · ")
 }
 
+/// The provider id of the account with this card id; empty when there is none.
+fn kind_of(model: &PanelModel, card_id: &str) -> String {
+    model.accounts.iter().find(|a| a.card_id() == card_id).map_or(String::new(), |a| a.kind.id().into())
+}
+
 fn name(model: &PanelModel, card_id: &str) -> String {
     model.accounts.iter().find(|a| a.card_id() == card_id).map_or(card_id.to_string(), Account::full_name)
 }
@@ -185,6 +194,7 @@ fn limit_row(model: &PanelModel, line: &LineRef, item: Option<&PriorityItem>) ->
         subtitle: join([Some(name(model, &line.card_id)), callout]),
         meter: meter.as_ref().map(|m| m.fill_fraction(false)),
         value: Some(meter.as_ref().map_or(line.menu_bar_value.clone(), |m| format!("{} used", m.value_text(false)))),
+        kind: kind_of(model, &line.card_id),
         ..Row::default()
     }
 }
@@ -198,7 +208,7 @@ pub fn priority_groups(model: &PanelModel) -> Vec<Group> {
     let board: &PriorityBoard = &model.board;
     let items = |list: &[PriorityItem]| list.iter().map(|i| limit_row(model, &i.line, Some(i))).collect::<Vec<_>>();
     let notices = || {
-        let rows = board.notices.iter().map(|n| Row { title: name(model, &n.card_id), subtitle: n.message.clone(), ..Row::default() });
+        let rows = board.notices.iter().map(|n| Row { title: name(model, &n.card_id), subtitle: n.message.clone(), kind: kind_of(model, &n.card_id), ..Row::default() });
         group("Needs Attention", rows.collect())
     };
     let mut groups = vec![];
@@ -220,12 +230,13 @@ pub fn priority_groups(model: &PanelModel) -> Vec<Group> {
             groups.extend(notices());
         }
     }
-    let waiting = board.waiting.iter().map(|id| Row { title: "Waiting for Usage".into(), subtitle: name(model, id), ..Row::default() });
+    let waiting = board.waiting.iter().map(|id| Row { title: "Waiting for Usage".into(), subtitle: name(model, id), kind: kind_of(model, id), ..Row::default() });
     groups.extend(group("Waiting", waiting.collect()));
     let used_up = board.used_up.iter().map(|i| Row {
         title: i.line.label.clone(),
         subtitle: name(model, &i.line.card_id),
         value: i.used_up_note(model.now),
+        kind: kind_of(model, &i.line.card_id),
         ..Row::default()
     });
     groups.extend(group("Used Up", used_up.collect()));
@@ -300,6 +311,19 @@ mod tests {
     }
 
     #[test]
+    fn priority_rows_carry_the_accounts_kind_and_json_omits_an_empty_one() {
+        let a = Account::new(ProviderKind::Codex, "");
+        let m = model(vec![a.clone()], HashMap::from([(a.card_id(), snap(vec![percent("Weekly", 85.0, 100)], Duration::zero()))]), HashMap::new());
+        let groups = priority_groups(&m);
+        assert_eq!(groups[0].rows[0].kind, "codex");
+        let json = serde_json::to_value(&groups[0].rows[0]).unwrap();
+        assert_eq!(json["kind"], "codex");
+        assert!(serde_json::to_value(Row::default()).unwrap().get("kind").is_none());
+        let waiting = priority_groups(&model(vec![a], HashMap::new(), HashMap::new()));
+        assert_eq!(waiting[0].rows[0].kind, "codex");
+    }
+
+    #[test]
     fn an_unreadable_account_is_a_notice_on_priority() {
         let a = Account::new(ProviderKind::Claude, "Work");
         let status = HashMap::from([(a.card_id(), ReadStatus::Unavailable("Sign in again".into()))]);
@@ -328,7 +352,9 @@ mod tests {
         let groups = usage_groups(&m);
         assert_eq!(titles(&groups), ["Claude", "Grok"]);
         let claude = &groups[0].rows;
-        assert_eq!(claude[0], Row { title: "Claude · A".into(), subtitle: "Max".into(), card_id: Some(c1_id), ..Row::default() });
+        assert_eq!(claude[0], Row { title: "Claude · A".into(), subtitle: "Max".into(), card_id: Some(c1_id), kind: "claude".into(), ..Row::default() });
+        assert!(claude[1].kind.is_empty() && claude[2].kind.is_empty());
+        assert_eq!(claude[3].kind, "claude");
         assert_eq!(claude[1].value.as_deref(), Some("40%"));
         assert_eq!(claude[1].meter, Some(0.4));
         assert_eq!(claude[2].value.as_deref(), Some("$5"));

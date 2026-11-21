@@ -227,6 +227,7 @@ impl SimpleComponent for Panel {
     }
 
     fn init((commands, inbox): Self::Init, window: Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
+        crate::icons::register();
         crate::start_worker(commands.clone(), inbox);
         let (priority, usage) = (Page::new(sender.input_sender()), Page::new(sender.input_sender()));
         let stack = gtk::Stack::new();

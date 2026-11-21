@@ -2,6 +2,7 @@
 //! draws what the user must do and what went wrong.
 
 use crate::accounts_logic::{parse_domain, picker, Choice};
+use crate::icons;
 use crate::panel::AddProgress;
 use crate::Command;
 use headroom_core::copilot::GitHubDomain;
@@ -105,6 +106,7 @@ impl AddFlow {
         let list = adw::PreferencesGroup::builder().description("Choose a provider to sign in to.").build();
         for choice in picker() {
             let row = adw::ActionRow::builder().title(choice.title()).activatable(true).build();
+            row.add_prefix(&icons::provider_icon(choice.icon_id()));
             row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
             let flow = self.clone();
             row.connect_activated(move |_| flow.choose(choice));

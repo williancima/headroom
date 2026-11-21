@@ -103,7 +103,7 @@ fn line_values(line: &MetricLine) -> Vec<MetricValue> {
 pub(super) fn unified_rows(model: &PanelModel, kind: ProviderKind, accounts: &[&Account]) -> Vec<Row> {
     let plans: BTreeSet<&str> = accounts.iter().filter_map(|a| model.snapshots.get(&a.card_id())?.plan.as_deref()).collect();
     let plan = if plans.len() > 1 { "Multiple".to_string() } else { plans.into_iter().next().unwrap_or_default().to_string() };
-    let mut rows = vec![Row { title: format!("{} Accounts", accounts.len()), subtitle: plan, ..Row::default() }];
+    let mut rows = vec![Row { title: format!("{} Accounts", accounts.len()), subtitle: plan, kind: kind.id().into(), ..Row::default() }];
     let shown: Vec<Vec<&MetricLine>> = accounts.iter().map(|a| shown_lines(model, a)).collect();
     let orders: Vec<Vec<String>> = shown.iter().map(|lines| lines.iter().map(|l| l.label().to_string()).collect()).collect();
     let unified_id = format!("{}.unified", kind.id());

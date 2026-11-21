@@ -108,6 +108,8 @@ fn a_unified_group_is_one_card_with_pooled_rows_members_and_copy_ids() {
     let g = &groups[0];
     assert_eq!((g.kind.as_str(), g.unifiable, g.unified), ("claude", true, true));
     assert_eq!((g.rows[0].title.as_str(), g.rows[0].subtitle.as_str()), ("2 Accounts", "Multiple"));
+    assert_eq!(g.rows[0].kind, "claude");
+    assert!(g.rows[1..].iter().all(|r| r.kind.is_empty() && r.members.iter().all(|m| m.kind.is_empty())));
     let weekly = &g.rows[1];
     assert_eq!(weekly.id.as_deref(), Some("claude.unified/Weekly"));
     assert_eq!(weekly.copy_ids, [format!("{}/Weekly", a.card_id()), format!("{}/Weekly", b.card_id())]);

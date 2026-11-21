@@ -45,3 +45,8 @@ export function dropAction(dragged, target) {
         return null;
     }
 }
+
+// Where the extension ships a provider's icon (`kind` is the provider id the panel JSON carries).
+export function providerIconFile(kind) {
+    return `icons/headroom-provider-${kind}-symbolic.svg`;
+}

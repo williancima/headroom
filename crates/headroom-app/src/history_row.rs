@@ -1,6 +1,7 @@
 //! A history row of the All Usage tab: an expander that opens its usage breakdown on click. Which rows are open
 //! survives a redraw, since every model rebuilds the rows.
 
+use crate::icons;
 use headroom_core::history::BreakdownView;
 use headroom_core::view::Row;
 use relm4::adw::prelude::*;
@@ -40,6 +41,9 @@ impl History {
             .subtitle(glib::markup_escape_text(&row.subtitle))
             .expanded(self.open.borrow().contains(&key))
             .build();
+        if !row.kind.is_empty() {
+            expander.add_prefix(&icons::provider_icon(&row.kind));
+        }
         if let Some(value) = &row.value {
             expander.add_suffix(&gtk::Label::builder().label(value).css_classes(["dim-label"]).build());
         }
@@ -119,6 +123,9 @@ fn meter(fraction: f64) -> gtk::LevelBar {
 /// A plain metric row: title, subtitle, meter and value.
 pub fn metric_row(row: &Row) -> adw::ActionRow {
     let action = adw::ActionRow::builder().title(glib::markup_escape_text(&row.title)).subtitle(glib::markup_escape_text(&row.subtitle)).build();
+    if !row.kind.is_empty() {
+        action.add_prefix(&icons::provider_icon(&row.kind));
+    }
     if let Some(fraction) = row.meter {
         action.add_suffix(&meter(fraction));
     }

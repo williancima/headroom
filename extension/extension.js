@@ -2,7 +2,6 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Pango from 'gi://Pango';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -16,7 +15,7 @@ import {breakdownPanel} from './breakdown.js';
 import {menuIds, metricLabel, roles} from './layout_logic.js';
 import {Share} from './share.js';
 import {priorityCopyVisible} from './share_logic.js';
-import {choiceBar, clickable, membersPanel, meter, reorderable, tabTrack, vbox} from './layout.js';
+import {choiceBar, clickable, membersPanel, meter, providerIcon, reorderable, tabTrack, vbox, wrap} from './layout.js';
 
 const APP_NAME = 'dev.headroom.Headroom';
 const APP_PATH = '/dev/headroom/Headroom';
@@ -26,12 +25,6 @@ const OWN_IFACE = '<node><interface name="dev.headroom.Extension"><method name="
 const REFRESH_SECONDS = 60;
 const DEBOUNCE_MS = 500;
 const APP_WAIT_SECONDS = 10;
-
-function wrap(label) {
-    label.clutter_text.line_wrap = true;
-    label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-    return label;
-}
 
 function ago(iso) {
     if (!iso)
@@ -61,6 +54,7 @@ const HeadroomIndicator = GObject.registerClass(
 class HeadroomIndicator extends PanelMenu.Button {
     constructor(dir) {
         super(0.5, 'Headroom');
+        this._dir = dir;
         this._tab = 'priority';
         this._data = null;
         this._error = null;
@@ -438,6 +432,8 @@ class HeadroomIndicator extends PanelMenu.Button {
         } else if (this._tab === 'usage' && role?.type === 'metric' && role.cardId) {
             reorderable(card, {type: 'metric', cardId: role.cardId, label: metricLabel(r.id, role.cardId)}, r.title, (...a) => this._layout(...a));
         }
+        if (r.kind)
+            top.add_child(providerIcon(this._dir, r.kind));
         const texts = vbox({x_expand: true});
         texts.add_child(new St.Label({text: r.title, style_class: 'headroom-card-title'}));
         if (r.subtitle) {
