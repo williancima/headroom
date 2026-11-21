@@ -32,7 +32,9 @@ Steps, once the owner has approved the number (`X.Y.Z`):
    and publishes the release with the tag message as its notes (never as a Draft).
 6. The same workflow signs `SHA256SUMS` with minisign (trusted comment `headroom X.Y.Z`) and publishes
    `SHA256SUMS.minisig` with the other files; the AppImage self-update rejects a release without it. The
-   key and its password are the repository secrets `MINISIGN_SECRET_KEY` and `MINISIGN_PASSWORD`.
+   key and its password are the secrets `MINISIGN_SECRET_KEY` and `MINISIGN_PASSWORD`. All four signing
+   secrets live in the `release` environment, which only `v*` tags can deploy to; never add them as
+   repository secrets.
 7. It also builds a flat APT repository holding the new .deb, signs it with the GPG key in the secrets
    `APT_GPG_KEY` and `APT_GPG_PASSPHRASE` (public half: `data/apt/headroom-archive-keyring.gpg`, shipped in
    the .deb), and deploys it to GitHub Pages (`https://williancima.github.io/headroom/`). The `github-pages`

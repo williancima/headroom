@@ -67,6 +67,8 @@ jobs:
     needs: release
     if: github.ref_type == 'tag'
     runs-on: ubuntu-24.04
+    # The signing secrets live in the `release` environment, which only `v*` tags can deploy to.
+    environment: release
     permissions:
       contents: write
     steps:
