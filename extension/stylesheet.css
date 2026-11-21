@@ -1,8 +1,10 @@
 .headroom-menu { min-width: 360px; max-width: 360px; }
-.headroom-switch { spacing: 6px; padding: 6px 12px; }
-.headroom-tab { padding: 4px 12px; border-radius: 99px; background-color: rgba(128, 128, 128, 0.15); }
-.headroom-tab:hover { background-color: rgba(128, 128, 128, 0.3); }
-.headroom-tab-active { background-color: rgba(128, 128, 128, 0.4); font-weight: bold; }
+.headroom-switch { padding: 6px 12px; }
+.headroom-track { padding: 3px; border-radius: 99px; background-color: rgba(128, 128, 128, 0.15); }
+.headroom-tab { padding: 4px 12px; border-radius: 99px; opacity: 150; }
+.headroom-tab:hover { opacity: 255; }
+.headroom-tab-active { opacity: 255; }
+.headroom-tab-pill { border-radius: 99px; background-color: rgba(128, 128, 128, 0.4); }
 .headroom-list { spacing: 6px; }
 .headroom-scroll { padding: 0 12px; }
 .headroom-group-title { font-weight: bold; font-size: 0.9em; padding-top: 6px; opacity: 180; }

@@ -1,5 +1,6 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import St from 'gi://St';
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import {dropAction} from './layout_logic.js';
@@ -12,30 +13,80 @@ export function vbox(props) {
     return box;
 }
 
-// A thin progress bar filled to `fraction` (0 to 1). The fill follows the track's width one idle later: resizing it
-// inside the track's allocation (notify::width) queues a relayout mid-allocation, which the Shell logs as
-// "Can't update stage views actor ... needs an allocation".
+// A thin progress bar filled to `fraction` (0 to 1). The track places the fill itself while it is allocated, so the
+// first frame already shows the right width (an idle-later resize drew every rebuilt bar empty for a frame, which
+// made the menu blink on each refresh). Allocating the child directly queues no relayout, unlike `set_width`.
+const Meter = GObject.registerClass(class HeadroomMeter extends St.Widget {
+    _init(fraction) {
+        super._init({style_class: 'headroom-meter', x_expand: true});
+        this._fraction = Math.min(1, Math.max(0, fraction));
+        this._fill = new St.Widget({style_class: 'headroom-meter-fill'});
+        this.add_child(this._fill);
+    }
+
+    vfunc_allocate(box) {
+        this.set_allocation(box);
+        const content = this.get_theme_node().get_content_box(box);
+        const fill = content.copy();
+        fill.x2 = fill.x1 + Math.round(content.get_width() * this._fraction);
+        this._fill.allocate(fill);
+    }
+});
+
 export function meter(fraction) {
-    const frac = Math.min(1, Math.max(0, fraction));
-    const track = new St.BoxLayout({style_class: 'headroom-meter', x_expand: true});
-    const fill = new St.Widget({style_class: 'headroom-meter-fill'});
-    track.add_child(fill);
-    let idle = 0;
-    track.connect('notify::width', () => {
-        if (idle)
+    return new Meter(fraction);
+}
+
+// The tab switch: `tabs` (a row of buttons) over one pill that marks the selected tab. The track allocates the pill
+// from the selected tab's allocation in its own pass, so it is in place from the first frame and never feeds back
+// into the layout. Switching slides it with `translation_x`, which only moves the paint.
+const TabTrack = GObject.registerClass(class HeadroomTabTrack extends St.Widget {
+    _init(tabs, selected) {
+        super._init({style_class: 'headroom-track', x_expand: true});
+        this._tabs = tabs;
+        this._selected = selected;
+        this._pill = new St.Widget({style_class: 'headroom-tab-pill'});
+        this.add_child(this._pill);
+        this.add_child(tabs);
+    }
+
+    select(tab) {
+        if (tab === this._selected)
             return;
-        idle = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-            idle = 0;
-            fill.set_width(Math.round(track.width * frac));
-            return GLib.SOURCE_REMOVE;
-        });
-    });
-    track.connect('destroy', () => {
-        if (idle)
-            GLib.source_remove(idle);
-        idle = 0;
-    });
-    return track;
+        // Start from where the pill is drawn now (also mid-slide), then glide to the new tab.
+        const offset = this._pill.translation_x + this._selected.x - tab.x;
+        this._selected = tab;
+        this._pill.remove_all_transitions();
+        this._pill.translation_x = offset;
+        this._pill.ease({translation_x: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        this.queue_relayout();
+    }
+
+    vfunc_get_preferred_width(forHeight) {
+        const node = this.get_theme_node();
+        const [min, nat] = this._tabs.get_preferred_width(node.adjust_for_height(forHeight));
+        return node.adjust_preferred_width(min, nat);
+    }
+
+    vfunc_get_preferred_height(forWidth) {
+        const node = this.get_theme_node();
+        const [min, nat] = this._tabs.get_preferred_height(node.adjust_for_width(forWidth));
+        return node.adjust_preferred_height(min, nat);
+    }
+
+    vfunc_allocate(box) {
+        this.set_allocation(box);
+        const content = this.get_theme_node().get_content_box(box);
+        this._tabs.allocate(content);
+        const tab = this._selected.get_allocation_box();
+        this._pill.allocate(new Clutter.ActorBox({
+            x1: content.x1 + tab.x1, y1: content.y1 + tab.y1, x2: content.x1 + tab.x2, y2: content.y1 + tab.y2,
+        }));
+    }
+});
+
+export function tabTrack(tabs, selected) {
+    return new TabTrack(tabs, selected);
 }
 
 // Left click runs `primary`, right click `secondary`. Both run after the event, because they redraw the list and the

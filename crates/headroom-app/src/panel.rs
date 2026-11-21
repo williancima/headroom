@@ -60,7 +60,7 @@ pub struct Panel {
     window: adw::ApplicationWindow,
     refresh: gtk::Button,
     copy: gtk::Button,
-    stack: adw::ViewStack,
+    stack: gtk::Stack,
     priority: Page,
     usage: Page,
     nav: adw::NavigationView,
@@ -229,7 +229,7 @@ impl SimpleComponent for Panel {
     fn init((commands, inbox): Self::Init, window: Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
         crate::start_worker(commands.clone(), inbox);
         let (priority, usage) = (Page::new(sender.input_sender()), Page::new(sender.input_sender()));
-        let stack = adw::ViewStack::new();
+        let stack = gtk::Stack::new();
         stack.add_titled(&priority.root, Some("priority"), "Priority");
         stack.add_titled(&usage.root, Some("usage"), "All Usage");
         stack.set_visible_child_name("priority");
@@ -241,7 +241,7 @@ impl SimpleComponent for Panel {
             let _ = input.send(PanelMsg::Refresh);
         });
         let header = adw::HeaderBar::new();
-        header.set_title_widget(Some(&adw::ViewSwitcher::builder().stack(&stack).policy(adw::ViewSwitcherPolicy::Wide).build()));
+        header.set_title_widget(Some(&gtk::StackSwitcher::builder().stack(&stack).build()));
         header.pack_start(&refresh);
         let copy = gtk::Button::from_icon_name("edit-copy-symbolic");
         copy.update_property(&[gtk::accessible::Property::Label("Copy Priority Image")]);

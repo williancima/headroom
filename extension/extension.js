@@ -16,7 +16,7 @@ import {breakdownPanel} from './breakdown.js';
 import {menuIds, metricLabel, roles} from './layout_logic.js';
 import {Share} from './share.js';
 import {priorityCopyVisible} from './share_logic.js';
-import {choiceBar, clickable, membersPanel, meter, reorderable, vbox} from './layout.js';
+import {choiceBar, clickable, membersPanel, meter, reorderable, tabTrack, vbox} from './layout.js';
 
 const APP_NAME = 'dev.headroom.Headroom';
 const APP_PATH = '/dev/headroom/Headroom';
@@ -132,16 +132,21 @@ class HeadroomIndicator extends PanelMenu.Button {
         // Plain sections, not reactive:false menu items: those take the theme's insensitive (dimmed) look.
         const switchSection = new PopupMenu.PopupMenuSection();
         const row = new St.BoxLayout({style_class: 'headroom-switch', x_expand: true});
+        const tabs = new St.BoxLayout({x_expand: true});
+        tabs.layout_manager.homogeneous = true;
         this._tabs = {};
         for (const [key, text] of [['priority', 'Priority'], ['usage', 'All Usage']]) {
             const b = new St.Button({label: text, style_class: 'headroom-tab', x_expand: true, can_focus: true});
             b.connect('clicked', () => {
                 this._tab = key;
+                this._track.select(b);
                 this._render();
             });
             this._tabs[key] = b;
-            row.add_child(b);
+            tabs.add_child(b);
         }
+        this._track = tabTrack(tabs, this._tabs[this._tab]);
+        row.add_child(this._track);
         switchSection.actor.add_child(row);
         this.menu.addMenuItem(switchSection);
 
