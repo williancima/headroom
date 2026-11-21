@@ -8,7 +8,8 @@ About a minute after the app starts, and every 6 hours after that, it reads the 
 [GitHub release](https://github.com/williancima/headroom/releases). If the version is newer than the running
 one (pre-releases are ignored), it downloads the AppImage, the release's `SHA256SUMS` and its minisign signature
 `SHA256SUMS.minisig`. It checks that the list is signed by the Headroom release key for that exact version, then
-checks the file's SHA-256, replaces the AppImage file in place and restarts. A release without the signature
+checks the file's SHA-256, replaces the AppImage file in place and restarts. A download larger than expected
+(1 MiB for the release answer and the checksum files, 512 MiB for the AppImage) is refused before any check. A release without the signature
 is skipped until a later check. The request uses the [proxy](settings.md#network)
 if one is set.
 

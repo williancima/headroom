@@ -129,8 +129,10 @@ pub struct TokenResponse {
 }
 
 impl TokenResponse {
+    /// `expires_in` is clamped to one year either way, so a huge value cannot overflow the date.
     pub fn expires_at(&self, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
-        self.expires_in.map(|s| now + Duration::milliseconds((s * 1000.0) as i64))
+        const YEAR_SECS: f64 = 365.0 * 24.0 * 3600.0;
+        self.expires_in.map(|s| now + Duration::milliseconds((s.clamp(-YEAR_SECS, YEAR_SECS) * 1000.0) as i64))
     }
 
     pub fn into_tokens(self, now: DateTime<Utc>, extras: std::collections::HashMap<String, String>) -> OAuthTokens {
@@ -221,6 +223,17 @@ mod tests {
         assert_eq!(bare.expires_at(now), None);
         assert!(matches!(TokenResponse::from_exchange(&raw(200, r#"{"access_token":""}"#)), Err(OAuthError::InvalidResponse)));
         assert!(matches!(TokenResponse::from_exchange(&raw(500, "")), Err(OAuthError::RequestFailed(500))));
+    }
+
+    #[test]
+    fn huge_expires_in_is_clamped_to_a_year() {
+        let now = Utc::now();
+        let at = |body: &str| TokenResponse::from_exchange(&raw(200, body)).unwrap().expires_at(now);
+        let year = Duration::days(365);
+        assert_eq!(at(r#"{"access_token":"a","expires_in":1.7976931348623157e308}"#), Some(now + year));
+        assert_eq!(at(r#"{"access_token":"a","expires_in":9223372036854775807}"#), Some(now + year));
+        assert_eq!(at(r#"{"access_token":"a","expires_in":-1.7976931348623157e308}"#), Some(now - year));
+        assert_eq!(at(r#"{"access_token":"a","expires_in":0}"#), Some(now));
     }
 
     #[test]

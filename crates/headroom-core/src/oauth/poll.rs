@@ -13,16 +13,25 @@ pub enum Poll<T> {
     Failed(String),
 }
 
+const MIN_INTERVAL: Duration = Duration::from_secs(1);
+const MAX_INTERVAL: Duration = Duration::from_secs(60);
+const MAX_LIFETIME: Duration = Duration::from_secs(3600);
+
+/// A server's poll interval in seconds, clamped to 1..=60 so a huge or odd value cannot panic or stall.
+pub fn interval_secs(secs: f64) -> Duration {
+    Duration::from_secs_f64(secs.max(MIN_INTERVAL.as_secs_f64()).min(MAX_INTERVAL.as_secs_f64()))
+}
+
 /// Polls `request` until it completes, fails or `expires_in` passes. `OAuthError::Network` from the
 /// closure counts as pending and is returned at the deadline if nothing else ends the wait; any other
-/// error ends the wait at once.
+/// error ends the wait at once. `interval` is clamped to 1..=60 seconds and `expires_in` to 1..=3600.
 pub async fn poll<T, F, Fut>(interval: Duration, expires_in: Duration, mut request: F) -> Result<T, OAuthError>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<Poll<T>, OAuthError>>,
 {
-    let deadline = Instant::now() + expires_in;
-    let mut delay = interval.max(Duration::from_secs(1));
+    let deadline = Instant::now() + expires_in.clamp(MIN_INTERVAL, MAX_LIFETIME);
+    let mut delay = interval.clamp(MIN_INTERVAL, MAX_INTERVAL);
     let mut network_error = false;
     while Instant::now() < deadline {
         let result = match request().await {
@@ -98,5 +107,21 @@ mod tests {
         assert_eq!(r.unwrap_err().to_string(), "The device code expired.");
         let r: Result<(), _> = poll(S(1), S(3), || async { Ok(Poll::Pending) }).await;
         assert_eq!(r.unwrap_err().to_string(), "Device sign-in expired.");
+    }
+
+    #[test]
+    fn server_intervals_are_clamped() {
+        assert_eq!(interval_secs(5.0), S(5));
+        for (secs, want) in [(0.0, S(1)), (-3.0, S(1)), (f64::MAX, S(60)), (f64::INFINITY, S(60)), (f64::NAN, S(1))] {
+            assert_eq!(interval_secs(secs), want, "{secs}");
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn huge_lifetimes_and_intervals_are_clamped() {
+        let start = Instant::now();
+        let r: Result<(), _> = poll(Duration::MAX, Duration::MAX, || async { Ok(Poll::Pending) }).await;
+        assert_eq!(r.unwrap_err().to_string(), "Device sign-in expired.");
+        assert_eq!(start.elapsed(), S(3600));
     }
 }

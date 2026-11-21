@@ -133,12 +133,18 @@ fn read_json<T: serde::de::DeserializeOwned + Default>(path: &Path) -> std::io::
     }
 }
 
+/// Directories it creates are 0700 and the file is 0600: the temp file gets the mode (a stale one is reset)
+/// and the rename carries it over an older file.
 fn write_json<T: serde::Serialize + ?Sized>(path: &Path, value: &T) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
+        std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
     }
     let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec_pretty(value).map_err(std::io::Error::other)?)?;
+    let mut file = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(&tmp)?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+    file.write_all(&serde_json::to_vec_pretty(value).map_err(std::io::Error::other)?)?;
     std::fs::rename(tmp, path)
 }
 
@@ -287,5 +293,25 @@ mod tests {
         assert!(!t(Some("r"), Some(3600)).needs_refresh(now));
         assert!(!t(None, Some(1)).needs_refresh(now));
         assert!(!t(Some("r"), None).needs_refresh(now));
+    }
+
+    #[test]
+    fn files_are_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let dir = temp();
+        let (config, state) = (dir.join("config"), dir.join("state"));
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(state.join("snapshots.json"), "{}").unwrap();
+        std::fs::set_permissions(state.join("snapshots.json"), std::fs::Permissions::from_mode(0o644)).unwrap();
+        std::fs::write(state.join("snapshots.json.tmp"), "").unwrap();
+        std::fs::set_permissions(state.join("snapshots.json.tmp"), std::fs::Permissions::from_mode(0o666)).unwrap();
+        let store = Store::at(&config, &state);
+        store.save_accounts(&[]).unwrap();
+        store.save_snapshots(&HashMap::new()).unwrap();
+        assert_eq!(mode(&config), 0o700);
+        assert_eq!(mode(&config.join("accounts.json")), 0o600);
+        assert_eq!(mode(&state.join("snapshots.json")), 0o600);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

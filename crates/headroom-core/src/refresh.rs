@@ -260,7 +260,10 @@ async fn fetch_oauth(
         }
         ProviderKind::Devin => DevinClient::default().with_transport(transport).fetch(tokens, now).await,
         ProviderKind::Amp => AmpClient::default().fetch(tokens, now).await,
-        ProviderKind::Copilot => CopilotClient::new(GitHubDomain::from_saved(account.domain.as_deref())).fetch(tokens, now).await,
+        ProviderKind::Copilot => {
+            let domain = GitHubDomain::from_saved(account.domain.as_deref()).ok_or_else(|| ProviderError::Unavailable(crate::copilot::domain::INVALID_SAVED_MESSAGE.into()))?;
+            CopilotClient::new(domain).fetch(tokens, now).await
+        }
         ProviderKind::Muse => MuseClient::default().fetch(tokens, previous, now).await,
         ProviderKind::Grok => {
             let read = hourly_due(state.last_secondary_read, now);
@@ -331,5 +334,14 @@ mod tests {
         assert!(hourly_due(None, now));
         assert!(!hourly_due(Some(now - Duration::minutes(59)), now));
         assert!(hourly_due(Some(now - Duration::minutes(60)), now));
+    }
+
+    #[tokio::test]
+    async fn a_copilot_account_with_a_tampered_domain_sends_no_request() {
+        let mut account = Account::new(ProviderKind::Copilot, "work");
+        account.domain = Some("evil.example".into());
+        let mut tokens = OAuthTokens { access_token: "t".into(), refresh_token: None, expires_at: None, extras: Default::default() };
+        let result = fetch_oauth(&account, &mut tokens, Transport::Direct, None, &mut ProviderState::default(), Utc::now(), false).await;
+        assert_eq!(result.unwrap_err().to_string(), crate::copilot::domain::INVALID_SAVED_MESSAGE);
     }
 }

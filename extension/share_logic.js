@@ -12,3 +12,9 @@ export function shareRequest(kind, rowId, requestId) {
         req.rowId = rowId;
     return JSON.stringify(req);
 }
+
+// The only file the app writes for a request: `<runtime dir>/headroom/share-<requestId>.png` (share.rs
+// share_path). A ShareReady path that is anything else is not read or deleted.
+export function expectedSharePath(runtimeDir, requestId) {
+    return `${runtimeDir.replace(/\/+$/, '')}/headroom/share-${requestId}.png`;
+}

@@ -55,7 +55,8 @@ headroom panel                                    # what the panel shows, as JSO
   things the way the app does.
 - Banked resets (Claude, Codex, Z.ai) appear in the output, but this command cannot claim them. The running
   app does it through its `claim-reset` action, which takes a JSON string
-  `{"card_id": "<row card_id>", "claim": <entry claim>, "request_id": "<token>"}`. When a claim gets no clear
+  `{"card_id": "<row card_id>", "claim": <entry claim>, "request_id": "<token>"}`. The app refuses, spending
+nothing, a reset that the account's last reading does not offer as usable. When a claim gets no clear
   reply, retry it with the same `request_id`. After a claim finishes, the app emits the session-bus signal
   `dev.headroom.Headroom.Resets.ClaimDone` on `/dev/headroom/Headroom` from `dev.headroom.Headroom`, carrying
   `(s request_id, s message, b settled)`. A `settled` of false means the claim might still go through, so

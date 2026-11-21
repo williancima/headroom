@@ -1,6 +1,8 @@
 //! Where a Copilot seat signs in: github.com, or a company's GitHub Enterprise Cloud domain on GHE.com.
 //! Self-hosted GitHub Enterprise Server is not supported.
 pub const INVALID_MESSAGE: &str = "Headroom works with GitHub Enterprise on GHE.com. Enter an address like octocorp.ghe.com.";
+/// A saved domain that fails the same checks as a typed one; the token is never sent to it.
+pub const INVALID_SAVED_MESSAGE: &str = "This account's GitHub Enterprise domain is not valid. Remove the account and add it again.";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum GitHubDomain {
@@ -11,9 +13,13 @@ pub enum GitHubDomain {
 }
 
 impl GitHubDomain {
-    /// The domain an account saved; none is github.com.
-    pub fn from_saved(saved: Option<&str>) -> Self {
-        saved.map_or(Self::Github, |d| Self::Enterprise(d.to_string()))
+    /// The domain an account saved; none is github.com. accounts.json is re-checked with the rules of
+    /// `parse`: anything but an exact `<name>.ghe.com` is `None`, so the token goes nowhere.
+    pub fn from_saved(saved: Option<&str>) -> Option<Self> {
+        match saved {
+            None => Some(Self::Github),
+            Some(d) => Self::parse(d).filter(|parsed| parsed.saved() == Some(d)),
+        }
     }
 
     /// Reads a typed or pasted address. It trims and lowercases it and drops the scheme and path, so a
@@ -83,9 +89,16 @@ mod tests {
 
     #[test]
     fn hosts_and_saved_form() {
-        let github = GitHubDomain::from_saved(None);
+        let github = GitHubDomain::from_saved(None).unwrap();
         assert_eq!((github.saved(), github.web_url("/x"), github.api_url("/user")), (None, "https://github.com/x".into(), "https://api.github.com/user".into()));
-        let ghe = GitHubDomain::from_saved(Some("octocorp.ghe.com"));
+        let ghe = GitHubDomain::from_saved(Some("octocorp.ghe.com")).unwrap();
         assert_eq!((ghe.saved(), ghe.web_url("/x"), ghe.api_url("/user")), (Some("octocorp.ghe.com"), "https://octocorp.ghe.com/x".into(), "https://api.octocorp.ghe.com/user".into()));
+    }
+
+    #[test]
+    fn a_tampered_saved_domain_is_refused() {
+        for bad in ["evil.example", "octocorp.ghe.com.evil.example", "evil.example/x.ghe.com", "OctoCorp.ghe.com", " octocorp.ghe.com", "octocorp", "github.com", "", "a.b.ghe.com", "octocorp.ghe.com:8443"] {
+            assert_eq!(GitHubDomain::from_saved(Some(bad)), None, "{bad}");
+        }
     }
 }

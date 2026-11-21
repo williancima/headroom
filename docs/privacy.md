@@ -27,12 +27,13 @@ update check.
 | `~/.local/state/headroom/provider_state.json` | Waits after failures, hourly read times, a few small provider bodies kept between hourly reads (a plan or reset list), and usage-history days |
 | `~/.local/state/headroom/burning_fast.json` | Which limits are burning fast |
 
-Both folders follow `XDG_CONFIG_HOME` and `XDG_STATE_HOME`. Nothing syncs anywhere.
+Both folders follow `XDG_CONFIG_HOME` and `XDG_STATE_HOME`. Headroom creates them readable only by you (mode
+0700) and writes each file readable only by you (mode 0600). Nothing syncs anywhere.
 
 ## What leaves your machine
 
 Requests go only to the provider of each account (and to a hub you connected, with its management key). A
-ChatGPT sign-in listens on `127.0.0.1:1455` only while it waits for the browser. Headroom sends no analytics or
+ChatGPT sign-in listens on port 1455 of `127.0.0.1` and `[::1]` only while it waits for the browser. Headroom sends no analytics or
 crash reports. Update checks are described in [Updates](updates.md).
 
 The [`headroom` command](cli.md) `usage` and `panel` read only the saved files: no network request, no

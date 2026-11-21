@@ -190,21 +190,35 @@ async fn watch_replaced_binary(commands: UnboundedSender<Command>) {
 
 /// Downloads the newer AppImage next to the old one and swaps it in. `Ok(true)` when it was replaced.
 async fn update_once(image: &Path) -> Result<bool, String> {
-    use std::os::unix::fs::PermissionsExt;
     let release = update::latest_release(update::LATEST_URL).await?;
     let Some(found) = update::pick(&release, env!("CARGO_PKG_VERSION")) else { return Ok(false) };
     eprintln!("{NAME}: downloading version {}", found.version);
     let bytes = update::download(&found).await?;
+    swap_in(image, &bytes).map(|()| true).map_err(|e| format!("could not replace the AppImage: {e}"))
+}
+
+/// Writes `<image>.part` as a new file (never through a planted symlink), flushes it to disk and renames it
+/// over `image`. A stale `.part` is removed first; a failed swap removes the new one.
+fn swap_in(image: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     let mut part = image.as_os_str().to_owned();
     part.push(".part");
     let part = PathBuf::from(part);
-    let swapped = std::fs::write(&part, bytes)
-        .and_then(|()| std::fs::set_permissions(&part, std::fs::Permissions::from_mode(0o755)))
-        .and_then(|()| std::fs::rename(&part, image));
+    match std::fs::remove_file(&part) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+        _ => {}
+    }
+    let swapped = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o755).open(&part).and_then(|mut file| {
+        file.write_all(bytes)?;
+        file.set_permissions(std::fs::Permissions::from_mode(0o755))?;
+        file.sync_all()
+    });
+    let swapped = swapped.and_then(|()| std::fs::rename(&part, image));
     if swapped.is_err() {
         let _ = std::fs::remove_file(&part);
     }
-    swapped.map(|()| true).map_err(|e| format!("could not replace the AppImage: {e}"))
+    swapped
 }
 
 async fn self_update(image: PathBuf, commands: UnboundedSender<Command>) {
@@ -232,4 +246,26 @@ pub fn spawn_background(commands: UnboundedSender<Command>) {
         return eprintln!("{NAME}: {} is not writable, so the AppImage will not update itself", dir.display());
     }
     tokio::spawn(self_update(image, commands));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_new_appimage_replaces_the_old_one_without_following_a_planted_part() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("headroom-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (image, victim) = (dir.join("Headroom.AppImage"), dir.join("victim"));
+        std::fs::write(&image, b"old").unwrap();
+        std::fs::write(&victim, b"keep").unwrap();
+        std::os::unix::fs::symlink(&victim, dir.join("Headroom.AppImage.part")).unwrap();
+        swap_in(&image, b"new").unwrap();
+        assert_eq!(std::fs::read(&image).unwrap(), b"new");
+        assert_eq!(std::fs::metadata(&image).unwrap().permissions().mode() & 0o777, 0o755);
+        assert_eq!(std::fs::read(&victim).unwrap(), b"keep");
+        assert!(std::fs::symlink_metadata(dir.join("Headroom.AppImage.part")).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }

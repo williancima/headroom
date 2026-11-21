@@ -11,8 +11,13 @@ pub const LATEST_URL: &str = "https://api.github.com/repos/williancima/headroom/
 pub const APPIMAGE_NAME: &str = "Headroom-x86_64.AppImage";
 pub const SUMS_NAME: &str = "SHA256SUMS";
 pub const SIG_NAME: &str = "SHA256SUMS.minisig";
-/// The release signing key. The release workflow signs `SHA256SUMS` with its secret half (a repository secret).
+/// The release signing key. The release workflow signs `SHA256SUMS` with its secret half (a secret of the
+/// GitHub `release` environment).
 const PUBLIC_KEY: &str = "RWSJvReAKvMzJnvQTzV973bN63TcYQnRX56PYHpYQz7OhDvR9EyYZMQL";
+/// Size caps, checked while downloading and before any verification: the release answer, `SHA256SUMS` and its
+/// signature are small; the AppImage is tens of MiB.
+const METADATA_LIMIT: u64 = 1024 * 1024;
+const APPIMAGE_LIMIT: u64 = 512 * 1024 * 1024;
 
 #[derive(Debug, Deserialize)]
 pub struct Release {
@@ -90,17 +95,29 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|_| "could not start the HTTP client".to_string())
 }
 
-/// GET `url`; the error names only the status, never the body.
-pub async fn fetch(url: &str) -> Result<Vec<u8>, String> {
-    let response = client()?.get(url).send().await.map_err(|e| if e.is_timeout() { "timed out".to_string() } else { "could not connect".to_string() })?;
+/// GET `url`, refusing a body over `limit` bytes (by Content-Length, then while streaming); the error names
+/// only the status, never the body.
+async fn fetch(url: &str, limit: u64) -> Result<Vec<u8>, String> {
+    let mut response = client()?.get(url).send().await.map_err(|e| if e.is_timeout() { "timed out".to_string() } else { "could not connect".to_string() })?;
     if !response.status().is_success() {
         return Err(format!("the server answered {}", response.status()));
     }
-    response.bytes().await.map(|b| b.to_vec()).map_err(|_| "the download was interrupted".to_string())
+    let too_large = || format!("the download is larger than {} MiB", limit / (1024 * 1024));
+    if response.content_length().is_some_and(|len| len > limit) {
+        return Err(too_large());
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|_| "the download was interrupted".to_string())? {
+        if (bytes.len() + chunk.len()) as u64 > limit {
+            return Err(too_large());
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 pub async fn latest_release(url: &str) -> Result<Release, String> {
-    serde_json::from_slice(&fetch(url).await?).map_err(|_| "the release answer was not understood".to_string())
+    serde_json::from_slice(&fetch(url, METADATA_LIMIT).await?).map_err(|_| "the release answer was not understood".to_string())
 }
 
 /// Downloads and verifies the AppImage of `update`; the bytes are returned only when the checksum list carries
@@ -110,12 +127,12 @@ pub async fn download(update: &Update) -> Result<Vec<u8>, String> {
 }
 
 async fn download_with_key(update: &Update, key: &str) -> Result<Vec<u8>, String> {
-    let sums = fetch(&update.sums_url).await?;
-    let sig = String::from_utf8(fetch(&update.sig_url).await?).map_err(|_| "the checksum signature was not text".to_string())?;
+    let sums = fetch(&update.sums_url, METADATA_LIMIT).await?;
+    let sig = String::from_utf8(fetch(&update.sig_url, METADATA_LIMIT).await?).map_err(|_| "the checksum signature was not text".to_string())?;
     verify_sums(&sums, &sig, key, &update.version)?;
     let sums = String::from_utf8(sums).map_err(|_| "the checksum list was not text".to_string())?;
     let expected = checksum_for(&sums, APPIMAGE_NAME).ok_or("the checksum list has no entry for the AppImage")?;
-    let bytes = fetch(&update.appimage_url).await?;
+    let bytes = fetch(&update.appimage_url, APPIMAGE_LIMIT).await?;
     if sha256_hex(&bytes) != expected {
         return Err("the download does not match its checksum".into());
     }
@@ -240,5 +257,34 @@ X9lxHEdcNsRb8/ZXvtPX34w9SMQ6fb92+WyDFC5zHMbb+8QWhLyUaQ/Z3sfkpYT0tg4SVJQu6whctcfF
         assert!(download_with_key(&update("other-image", "unsigned-sums", "sig"), TEST_KEY).await.unwrap_err().contains("not signed"));
         assert!(download_with_key(&update("image", "sums", "missing"), TEST_KEY).await.unwrap_err().contains("404"));
         assert!(download(&update("image", "sums", "sig")).await.unwrap_err().contains("not signed"));
+    }
+
+    #[tokio::test]
+    async fn oversized_downloads_are_refused() {
+        use wiremock::matchers::method;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("GET")).respond_with(ResponseTemplate::new(200).set_body_bytes(vec![b'a'; METADATA_LIMIT as usize + 1])).mount(&server).await;
+        assert_eq!(fetch(&server.uri(), METADATA_LIMIT).await.unwrap_err(), "the download is larger than 1 MiB");
+        assert_eq!(latest_release(&server.uri()).await.unwrap_err(), "the download is larger than 1 MiB");
+        assert_eq!(fetch(&server.uri(), METADATA_LIMIT + 1).await.unwrap().len(), METADATA_LIMIT as usize + 1);
+    }
+
+    /// A chunked answer has no Content-Length: the cap is enforced while it streams.
+    #[tokio::test]
+    async fn the_cap_holds_without_a_content_length() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let url = format!("http://127.0.0.1:{}/", listener.local_addr().unwrap().port());
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let _ = stream.read(&mut [0u8; 4096]).await;
+            let chunk = format!("{:x}\r\n{}\r\n", 64 * 1024, "a".repeat(64 * 1024));
+            let mut reply = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n".to_string();
+            reply.push_str(&chunk.repeat(17));
+            reply.push_str("0\r\n\r\n");
+            let _ = stream.write_all(reply.as_bytes()).await;
+        });
+        assert_eq!(fetch(&url, METADATA_LIMIT).await.unwrap_err(), "the download is larger than 1 MiB");
     }
 }

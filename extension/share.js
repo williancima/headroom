@@ -2,7 +2,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {shareRequest} from './share_logic.js';
+import {expectedSharePath, shareRequest} from './share_logic.js';
 
 const APP_NAME = 'dev.headroom.Headroom';
 const APP_PATH = '/dev/headroom/Headroom';
@@ -43,6 +43,10 @@ export class Share {
             return;
         if (error) {
             this._fail(error);
+            return;
+        }
+        if (path !== expectedSharePath(GLib.get_user_runtime_dir(), requestId)) {
+            this._fail('Could not copy the image: the app sent an unexpected file.');
             return;
         }
         const file = Gio.File.new_for_path(path);

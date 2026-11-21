@@ -21,13 +21,14 @@ pub fn hub_sync_due(last: Option<DateTime<Utc>>, now: DateTime<Utc>, forced: boo
     forced || last.is_none_or(|at| now - at >= HUB_SYNC_EVERY)
 }
 
-/// One line per limit running out, then the accounts that could not be read.
+/// One line per limit running out, then the accounts that could not be read. Escaped: StatusNotifier hosts
+/// may render the tooltip description as markup, and names and notices are not ours.
 pub fn tooltip_text(board: &PriorityBoard, accounts: &[Account]) -> String {
     let name = |card_id: &str| accounts.iter().find(|a| a.card_id() == card_id).map_or(card_id.to_string(), |a| a.full_name());
     let mut lines: Vec<String> =
         board.running_out.iter().map(|i| format!("{}: {} {}", name(&i.line.card_id), i.line.label, i.line.menu_bar_value)).collect();
     lines.extend(board.notices.iter().map(|n| format!("{}: {}", name(&n.card_id), n.message)));
-    lines.join("\n")
+    relm4::gtk::glib::markup_escape_text(&lines.join("\n")).to_string()
 }
 
 #[cfg(test)]
@@ -68,5 +69,16 @@ mod tests {
         assert!(!hub_sync_due(Some(now() - Duration::minutes(59)), now(), false));
         assert!(hub_sync_due(Some(now() - Duration::hours(1)), now(), false));
         assert!(hub_sync_due(Some(now()), now(), true));
+    }
+
+    #[test]
+    fn the_tooltip_is_markup_escaped() {
+        use headroom_core::priority::{AccountNotice, Summary};
+        let account = Account::new(headroom_core::ProviderKind::Openrouter, "<b>&");
+        let notice = AccountNotice { card_id: account.card_id(), message: "<i>down</i>".into() };
+        let board = PriorityBoard { pinned: vec![], running_out: vec![], attention: vec![], used_up: vec![], use_it_or_lose_it: vec![], notices: vec![notice], waiting: vec![], summary: Summary::Unavailable, shows_clear_row: false };
+        let text = tooltip_text(&board, &[account]);
+        assert!(text.contains("&lt;b&gt;&amp;") && text.contains("&lt;i&gt;down&lt;/i&gt;"), "{text}");
+        assert!(!text.contains('<'), "{text}");
     }
 }

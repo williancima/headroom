@@ -156,6 +156,10 @@ pub async fn claim_reset(store: &Store, card_id: &str, claim: &ResetRef, request
         eprintln!("headroom: {card_id}: reset claim: no local account to claim on");
         return refused;
     };
+    if !offered(store, card_id, claim) {
+        eprintln!("headroom: {card_id}: reset claim: the reset is not offered in the last reading");
+        return ClaimOutcome::NoCredit;
+    }
     let credential = match store::load_credential(account.id) {
         Ok(credential) => credential,
         Err(error) => {
@@ -202,6 +206,18 @@ pub async fn claim_reset(store: &Store, card_id: &str, claim: &ResetRef, request
         }
     }
     outcome
+}
+
+/// The panel and the extension offer Use only on the usable resets of the account's last saved snapshot. Any
+/// session-bus caller can send a claim, so a reset outside that list is refused before anything is spent.
+fn offered(store: &Store, card_id: &str, claim: &ResetRef) -> bool {
+    match store.snapshots() {
+        Ok(snapshots) => snapshots.get(card_id).is_some_and(|s| s.reset_items.iter().any(|i| i.usable && &i.claim == claim)),
+        Err(error) => {
+            eprintln!("headroom: {card_id}: reset claim: could not read the last snapshots: {error}");
+            false
+        }
+    }
 }
 
 /// Saves renewed tokens, on Ok and on Err of the claim.
@@ -331,5 +347,33 @@ mod tests {
         assert_eq!(outcome, ClaimOutcome::Failed(ClaimFailure::Refused));
         assert_eq!((tokens.access_token.as_str(), tokens.refresh_token.as_deref()), ("new", Some("r2")));
         assert_eq!(matched_credit("req-1"), None);
+    }
+
+    #[tokio::test]
+    async fn a_reset_that_is_not_offered_is_refused_and_spends_nothing() {
+        let dir = std::env::temp_dir().join(format!("headroom-test-{}", uuid::Uuid::new_v4()));
+        let store = Store::at(&dir.join("config"), &dir.join("state"));
+        let account = crate::Account::new(ProviderKind::Codex, "work");
+        let card = account.card_id();
+        store.save_accounts(&[account]).unwrap();
+        let (listed, other) = (at("2026-12-01T00:00:00Z"), at("2026-12-02T00:00:00Z"));
+        let mut items = ResetItem::codex(&[listed, other]);
+        items[1].usable = false;
+        let snapshot = crate::ProviderSnapshot { plan: None, lines: vec![], refreshed_at: at("2026-11-19T12:00:00Z"), reset_expiries: vec![], reset_items: items, notice: None, breakdowns: Default::default() };
+        store.save_snapshots(&HashMap::from([(card.clone(), snapshot)])).unwrap();
+        let state = store::ProviderState { last_secondary_read: Some(at("2026-11-19T11:00:00Z")), ..Default::default() };
+        store.save_provider_state(&HashMap::from([(card.clone(), state.clone())])).unwrap();
+
+        assert!(offered(&store, &card, &ResetRef::CodexCredit(listed)));
+        assert!(!offered(&store, &card, &ResetRef::CodexCredit(other)), "listed but not usable");
+        assert!(!offered(&store, "codex:someone-else", &ResetRef::CodexCredit(listed)));
+        let now = at("2026-11-19T12:00:00Z");
+        for claim in [ResetRef::CodexCredit(at("2027-01-01T00:00:00Z")), ResetRef::CodexCredit(other), ResetRef::ClaudeGrant("g".into())] {
+            let outcome = claim_reset(&store, &card, &claim, "req-x", now).await;
+            assert_eq!(outcome, ClaimOutcome::NoCredit);
+            assert_eq!(outcome.message(now), "That reset is no longer available");
+        }
+        assert_eq!(store.provider_state().unwrap().get(&card), Some(&state));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

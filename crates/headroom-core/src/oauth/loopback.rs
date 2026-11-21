@@ -12,8 +12,13 @@ use tokio::sync::mpsc;
 
 const HEADER_LIMIT: usize = 16 * 1024;
 
+/// How many random ports `bind(0, ..)` tries when someone else already holds `[::1]` on the one it picked.
+const RANDOM_PORT_TRIES: usize = 5;
+
 pub struct LoopbackServer {
     listener: TcpListener,
+    /// `[::1]` on the same port, so nobody else can catch a `localhost` redirect there. `None` without IPv6.
+    listener_v6: Option<TcpListener>,
     state: String,
     path: String,
     port: u16,
@@ -25,11 +30,27 @@ enum Outcome {
 }
 
 impl LoopbackServer {
-    /// Binds 127.0.0.1; port 0 picks a free one. The redirect URI names `localhost`.
+    /// Binds 127.0.0.1 and `[::1]` on the same port; port 0 picks a free one. The redirect URI names
+    /// `localhost`, which can resolve to either. Without IPv6 it listens on 127.0.0.1 alone. `[::1]` already
+    /// in use means another process holds it: a fixed port fails like an IPv4 conflict, port 0 tries another.
     pub async fn bind(port: u16, path: &str, state: String) -> io::Result<Self> {
-        let listener = TcpListener::bind(("127.0.0.1", port)).await?;
-        let port = listener.local_addr()?.port();
-        Ok(Self { listener, state, path: path.to_string(), port })
+        let mut tries = 0;
+        loop {
+            let listener = TcpListener::bind(("127.0.0.1", port)).await?;
+            let bound = listener.local_addr()?.port();
+            let listener_v6 = match TcpListener::bind(("::1", bound)).await {
+                Ok(v6) => Some(v6),
+                Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
+                    tries += 1;
+                    if port != 0 || tries >= RANDOM_PORT_TRIES {
+                        return Err(e);
+                    }
+                    continue;
+                }
+                Err(_) => None,
+            };
+            return Ok(Self { listener, listener_v6, state, path: path.to_string(), port: bound });
+        }
     }
 
     pub fn port(&self) -> u16 {
@@ -53,8 +74,8 @@ impl LoopbackServer {
         let (state, path) = (self.state, self.path);
         loop {
             tokio::select! {
-                accepted = self.listener.accept() => {
-                    let Ok((stream, _)) = accepted else { continue };
+                accepted = accept(&self.listener, self.listener_v6.as_ref()) => {
+                    let Ok(stream) = accepted else { continue };
                     let (tx, state, path) = (tx.clone(), state.clone(), path.clone());
                     tokio::spawn(async move {
                         if let Outcome::Done(r) = serve(stream, &state, &path).await {
@@ -66,6 +87,14 @@ impl LoopbackServer {
             }
         }
     }
+}
+
+async fn accept(v4: &TcpListener, v6: Option<&TcpListener>) -> io::Result<TcpStream> {
+    let accepted = match v6 {
+        Some(v6) => tokio::select! { a = v4.accept() => a, a = v6.accept() => a },
+        None => v4.accept().await,
+    };
+    accepted.map(|(stream, _)| stream)
 }
 
 async fn serve(mut stream: TcpStream, state: &str, path: &str) -> Outcome {
@@ -169,7 +198,11 @@ mod tests {
 
     /// Sends `request` raw and returns the reply (read to EOF).
     async fn send(port: u16, request: &str, close_write: bool) -> String {
-        let mut s = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        send_to("127.0.0.1", port, request, close_write).await
+    }
+
+    async fn send_to(host: &str, port: u16, request: &str, close_write: bool) -> String {
+        let mut s = TcpStream::connect((host, port)).await.unwrap();
         s.write_all(request.as_bytes()).await.unwrap();
         if close_write {
             s.shutdown().await.unwrap();
@@ -275,5 +308,31 @@ mod tests {
         let a = LoopbackServer::bind(0, "/callback", "s".into()).await.unwrap();
         let port = a.port();
         assert!(LoopbackServer::bind(port, "/callback", "s".into()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn the_callback_is_also_accepted_on_ipv6_loopback() {
+        let s = LoopbackServer::bind(0, "/callback", "expected".into()).await.unwrap();
+        if s.listener_v6.is_none() {
+            eprintln!("skipped: no IPv6 loopback on this machine");
+            return;
+        }
+        let port = s.port();
+        let task = tokio::spawn(s.wait());
+        assert!(send_to("::1", port, &get("?code=x&state=wrong"), false).await.starts_with("HTTP/1.1 400 "));
+        assert!(!task.is_finished());
+        send_to("::1", port, &get("?code=v6&state=expected"), false).await;
+        assert_eq!(task.await.unwrap().unwrap(), "v6");
+    }
+
+    #[tokio::test]
+    async fn a_fixed_port_held_on_ipv6_by_someone_else_is_an_error() {
+        let Ok(squatter) = TcpListener::bind(("::1", 0)).await else {
+            eprintln!("skipped: no IPv6 loopback on this machine");
+            return;
+        };
+        let port = squatter.local_addr().unwrap().port();
+        let Err(e) = LoopbackServer::bind(port, "/callback", "s".into()).await else { panic!("bound a port someone holds on [::1]") };
+        assert_eq!(e.kind(), io::ErrorKind::AddrInUse);
     }
 }

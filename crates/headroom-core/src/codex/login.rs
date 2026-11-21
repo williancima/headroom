@@ -12,7 +12,7 @@ use crate::oauth::{
     self, jwt_payload,
     loopback::LoopbackServer,
     pkce::{random_state, Pkce},
-    poll::{poll, Poll},
+    poll::{interval_secs, poll, Poll},
     OAuthError, RawResponse, TokenResponse,
 };
 use crate::openrouter::number;
@@ -88,10 +88,10 @@ impl CodexClient {
         let (device_auth_id, user_code) = (text("device_auth_id")?, text("user_code")?);
         let verify = Url::parse(&self.config.device_verify_url).map_err(|_| OAuthError::InvalidResponse)?;
         show_device_code(&user_code, &verify);
-        let interval = number(json.get("interval")).unwrap_or(DEFAULT_INTERVAL_SECS).max(0.0);
+        let interval = interval_secs(number(json.get("interval")).unwrap_or(DEFAULT_INTERVAL_SECS));
         let (http, url) = (&self.http, self.config.device_token_url.as_str());
         let (id, code) = (device_auth_id.as_str(), user_code.as_str());
-        let device = poll(Duration::from_secs_f64(interval), DEVICE_EXPIRY, || async move {
+        let device = poll(interval, DEVICE_EXPIRY, || async move {
             let response = oauth::post_json(http, url, &[("device_auth_id", id), ("user_code", code)]).await?;
             device_step(&response)
         })

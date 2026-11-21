@@ -1,7 +1,7 @@
 //! Generic device-code sign-in.
 //! Never log tokens or response bodies.
 
-use super::poll::{poll, Poll};
+use super::poll::{interval_secs, poll, Poll};
 use super::{error_code, post_form, OAuthError, RawResponse, TokenResponse};
 use reqwest::{Client, Url};
 use serde::Deserialize;
@@ -68,7 +68,7 @@ pub async fn device_authorization(
     let device: DeviceCode = serde_json::from_slice(&start.body).map_err(|_| OAuthError::InvalidResponse)?;
     let url = device.verification_url(params).ok_or(OAuthError::InvalidResponse)?;
     prompt(&device.user_code, &url);
-    let interval = Duration::from_secs_f64(device.interval.unwrap_or(DEFAULT_INTERVAL_SECS).max(0.0));
+    let interval = interval_secs(device.interval.unwrap_or(DEFAULT_INTERVAL_SECS));
     let token_fields = [("client_id", params.client_id), ("device_code", device.device_code.as_str()), ("grant_type", GRANT_TYPE)];
     poll(interval, Duration::from_secs(device.expires_in), || async {
         let response = post_form(client, params.token_url, &token_fields, params.headers).await?;
@@ -150,6 +150,15 @@ mod tests {
         let token = r.unwrap();
         assert_eq!((token.access_token.as_str(), token.org_id.as_deref()), ("a", Some("org")));
         assert_eq!(shown, Some(("UC-1".into(), "https://v.test/device".into())));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn huge_interval_and_lifetime_do_not_panic() {
+        let server = MockServer::start().await;
+        mount_start(&server, r#"{"device_code":"dc","user_code":"UC-1","expires_in":18446744073709551615,"interval":1.7976931348623157e308,"verification_uri":"https://v.test/d"}"#.into()).await;
+        mount_token(&server, 200, r#"{"access_token":"a"}"#).await;
+        let (s, t) = urls(&server);
+        assert_eq!(run(&params(&s, &t)).await.0.unwrap().access_token, "a");
     }
 
     #[tokio::test(start_paused = true)]
