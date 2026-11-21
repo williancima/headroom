@@ -75,11 +75,13 @@ struct IdToken {
 impl Entry {
     fn into_login(self) -> Option<HubLogin> {
         let id = self.id.filter(|id| !id.is_empty())?;
+        // The hub is a separate server: drop control characters so its strings can't drive a terminal.
+        let clean = |v: &str| v.chars().filter(|c| !c.is_control()).collect::<String>().trim().to_string();
         let label = [&self.email, &self.account, &self.label, &self.name]
             .into_iter()
-            .filter_map(|v| v.as_deref().map(str::trim))
+            .filter_map(|v| v.as_deref().map(clean))
             .find(|v| !v.is_empty())
-            .map_or_else(|| id.clone(), String::from);
+            .unwrap_or_else(|| clean(&id));
         Some(HubLogin {
             auth_index: self.auth_index.filter(|i| !i.is_empty()),
             provider: self.provider.or(self.kind).unwrap_or_default().to_lowercase(),
@@ -149,6 +151,13 @@ mod tests {
         assert_eq!(labels, ["alice@example.com", "claude", "disabled@example.com", "notoken@example.com", "codex-user@example.com", "kim@example.com"]);
         assert_eq!(logins[4].chatgpt_account_id.as_deref(), Some("acct-dummy-0001"));
         assert_eq!(logins.iter().filter(|l| l.is_unsupported()).count(), 1, "kimi counts, the disabled login does not");
+    }
+
+    #[test]
+    fn control_characters_in_a_hub_label_are_dropped() {
+        let body = br#"{"files":[{"id":"c.json","provider":"claude","email":"a\u001b]0;x\u0007\u001b[2K\rb"}]}"#;
+        let logins = HubLogin::listing(body).unwrap();
+        assert_eq!(logins[0].label, "a]0;x[2Kb");
     }
 
     #[test]

@@ -124,10 +124,12 @@ impl Account {
     /// Display name, plus ` · label` unless the label is empty or repeats the name.
     pub fn full_name(&self) -> String {
         let name = self.kind.display_name();
-        if self.label.is_empty() || self.label.to_lowercase() == name.to_lowercase() {
+        // Labels come from providers and hubs; a control character must never reach a terminal.
+        let label: String = self.label.chars().map(|c| if c.is_control() { '\u{FFFD}' } else { c }).collect();
+        if label.is_empty() || label.to_lowercase() == name.to_lowercase() {
             name.to_string()
         } else {
-            format!("{name} · {}", self.label)
+            format!("{name} · {label}")
         }
     }
 }
@@ -255,5 +257,11 @@ mod account_tests {
         assert_eq!((account.organization.as_deref(), account.domain.as_deref()), (None, None));
         let out = serde_json::to_value(&account).unwrap();
         assert!(out.get("organization").is_none() && out.get("domain").is_none());
+    }
+
+    #[test]
+    fn full_name_never_prints_a_control_character() {
+        let account = Account::new(ProviderKind::Claude, "a\u{1b}[2Kb");
+        assert_eq!(account.full_name(), "Claude · a\u{FFFD}[2Kb");
     }
 }

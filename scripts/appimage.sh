@@ -13,6 +13,11 @@ TOOL_SHA256=46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1
 CACHE=.cache/appimage
 TOOL="$CACHE/appimagetool-$TOOL_VERSION-x86_64.AppImage"
 APPDIR=dist/Headroom.AppDir
+# Without --runtime-file, appimagetool downloads the runtime from the moving "continuous" release, unchecked.
+# Pin a dated type2-runtime release by its GitHub-published digest. Update both together.
+RUNTIME_VERSION=20251108
+RUNTIME_SHA256=2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
+RUNTIME="$CACHE/runtime-$RUNTIME_VERSION-x86_64"
 
 if [ ! -x "$TOOL" ]; then
   mkdir -p "$CACHE"
@@ -22,6 +27,13 @@ if [ ! -x "$TOOL" ]; then
 fi
 echo "$TOOL_SHA256  $TOOL" | sha256sum -c --quiet - || { echo "appimagetool checksum mismatch; delete $TOOL" >&2; exit 1; }
 chmod +x "$TOOL"
+
+if [ ! -f "$RUNTIME" ]; then
+  curl -fsSL -o "$RUNTIME.part" \
+    "https://github.com/AppImage/type2-runtime/releases/download/$RUNTIME_VERSION/runtime-x86_64"
+  mv "$RUNTIME.part" "$RUNTIME"
+fi
+echo "$RUNTIME_SHA256  $RUNTIME" | sha256sum -c --quiet - || { echo "AppImage runtime checksum mismatch; delete $RUNTIME" >&2; exit 1; }
 
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/metainfo" \
@@ -54,5 +66,5 @@ chmod +x "$APPDIR/AppRun"
 
 mkdir -p dist
 # The tool is itself an AppImage; extract-and-run avoids needing FUSE (CI runners lack it).
-ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$TOOL" --no-appstream "$APPDIR" dist/Headroom-x86_64.AppImage
+ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$TOOL" --no-appstream --runtime-file "$RUNTIME" "$APPDIR" dist/Headroom-x86_64.AppImage
 rm -rf "$APPDIR"
