@@ -5,7 +5,8 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
-import {dropAction, providerIconFile} from './layout_logic.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {dropAction, providerIconFile, tooltipPosition} from './layout_logic.js';
 
 // A label that wraps instead of ellipsizing.
 export function wrap(label) {
@@ -172,4 +173,27 @@ export function membersPanel(members) {
             box.add_child(meter(m.meter));
     }
     return box;
+}
+
+// Shows `text` under `button` while the pointer is on it, styled like the dash's labels. Returns a hide function.
+export function tooltip(button, text) {
+    const label = new St.Label({text, style_class: 'dash-label', visible: false});
+    Main.uiGroup.add_child(label);
+    const hide = () => label.hide();
+    button.connect('notify::hover', () => {
+        if (!button.hover)
+            return hide();
+        const [x, y] = button.get_transformed_position();
+        const [width, height] = button.get_transformed_size();
+        const size = {width: label.get_preferred_width(-1)[1], height: label.get_preferred_height(-1)[1]};
+        const monitor = Main.layoutManager.findMonitorForActor(button) ?? Main.layoutManager.primaryMonitor;
+        const pos = tooltipPosition({x, y, width, height}, size, monitor);
+        label.set_position(pos.x, pos.y);
+        Main.uiGroup.set_child_above_sibling(label, null);
+        label.show();
+        return undefined;
+    });
+    button.connect('clicked', hide);
+    button.connect('destroy', () => label.destroy());
+    return hide;
 }

@@ -1,6 +1,6 @@
 // Run: node extension/layout_logic.test.mjs
 import assert from 'node:assert/strict';
-import {roles, menuIds, metricLabel, dropAction, providerIconFile} from './layout_logic.js';
+import {roles, menuIds, metricLabel, dropAction, providerIconFile, tooltipPosition} from './layout_logic.js';
 
 const group = {kind: 'claude', unified: false, rows: [
     {title: 'Claude · a', card_id: 'c1'},
@@ -32,3 +32,9 @@ assert.deepEqual(dropAction({type: 'provider', kind: 'claude'}, {type: 'provider
 assert.equal(dropAction({type: 'account', cardId: 'c1'}, {type: 'provider', kind: 'x'}), null);
 assert.equal(providerIconFile('claude'), 'icons/headroom-provider-claude-symbolic.svg');
 console.log('ok');
+
+const monitor = {x: 0, y: 0, width: 1000, height: 800};
+assert.deepEqual(tooltipPosition({x: 100, y: 300, width: 32, height: 32}, {width: 60, height: 20}, monitor), {x: 86, y: 338});
+assert.deepEqual(tooltipPosition({x: 980, y: 300, width: 20, height: 20}, {width: 100, height: 20}, monitor), {x: 900, y: 326});
+assert.deepEqual(tooltipPosition({x: 0, y: 300, width: 20, height: 20}, {width: 100, height: 20}, monitor), {x: 0, y: 326});
+assert.deepEqual(tooltipPosition({x: 100, y: 770, width: 32, height: 24}, {width: 60, height: 20}, monitor), {x: 86, y: 744});

@@ -15,7 +15,7 @@ import {breakdownPanel} from './breakdown.js';
 import {menuIds, metricLabel, roles} from './layout_logic.js';
 import {Share} from './share.js';
 import {priorityCopyVisible} from './share_logic.js';
-import {choiceBar, clickable, membersPanel, meter, providerIcon, reorderable, tabTrack, vbox, wrap} from './layout.js';
+import {choiceBar, clickable, membersPanel, meter, providerIcon, reorderable, tabTrack, tooltip, vbox, wrap} from './layout.js';
 
 const APP_NAME = 'dev.headroom.Headroom';
 const APP_PATH = '/dev/headroom/Headroom';
@@ -158,6 +158,7 @@ class HeadroomIndicator extends PanelMenu.Button {
         const footer = new St.BoxLayout({style_class: 'headroom-footer', x_expand: true});
         this._updated = wrap(new St.Label({style_class: 'headroom-updated', y_align: Clutter.ActorAlign.CENTER, x_expand: true}));
         footer.add_child(this._updated);
+        const hideTooltips = [];
         for (const [name, icon, action, dismiss] of [
             ['Copy Priority Image', 'edit-copy-symbolic', 'copy-priority', false],
             ['Refresh Now', 'view-refresh-symbolic', 'refresh', false],
@@ -171,6 +172,7 @@ class HeadroomIndicator extends PanelMenu.Button {
                 y_align: Clutter.ActorAlign.CENTER,
                 child: new St.Icon({icon_name: icon, icon_size: 16}),
             });
+            hideTooltips.push(tooltip(button, name));
             if (action === 'copy-priority') {
                 this._copyButton = button;
                 button.connect('clicked', () => this._share?.request('priority'));
@@ -181,6 +183,10 @@ class HeadroomIndicator extends PanelMenu.Button {
         }
         footerSection.actor.add_child(footer);
         this.menu.addMenuItem(footerSection);
+        this.menu.connect('open-state-changed', (_menu, open) => {
+            if (!open)
+                hideTooltips.forEach(hide => hide());
+        });
     }
 
     // --- data ---

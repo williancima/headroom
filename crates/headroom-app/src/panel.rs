@@ -246,6 +246,7 @@ impl SimpleComponent for Panel {
         header.pack_start(&refresh);
         let copy = gtk::Button::from_icon_name("edit-copy-symbolic");
         copy.update_property(&[gtk::accessible::Property::Label("Copy Priority Image")]);
+        copy.set_tooltip_text(Some("Copy Priority Image"));
         copy.set_visible(false);
         let input = sender.input_sender().clone();
         copy.connect_clicked(move |_| {
@@ -258,6 +259,7 @@ impl SimpleComponent for Panel {
         });
         let people = gtk::Button::from_icon_name("system-users-symbolic");
         people.update_property(&[gtk::accessible::Property::Label("Accounts")]);
+        people.set_tooltip_text(Some("Accounts"));
         let input = sender.input_sender().clone();
         people.connect_clicked(move |_| {
             let _ = input.send(PanelMsg::ShowAccounts);
@@ -265,6 +267,7 @@ impl SimpleComponent for Panel {
         header.pack_end(&people);
         let gear = gtk::Button::from_icon_name("emblem-system-symbolic");
         gear.update_property(&[gtk::accessible::Property::Label("Settings")]);
+        gear.set_tooltip_text(Some("Settings"));
         let input = sender.input_sender().clone();
         gear.connect_clicked(move |_| {
             let _ = input.send(PanelMsg::ShowSettings);

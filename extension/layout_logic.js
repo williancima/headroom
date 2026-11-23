@@ -50,3 +50,12 @@ export function dropAction(dragged, target) {
 export function providerIconFile(kind) {
     return `icons/headroom-provider-${kind}-symbolic.svg`;
 }
+
+// Where a tooltip goes: centered under the button (above it near the screen's bottom), inside the monitor.
+export function tooltipPosition(button, label, monitor, gap = 6) {
+    const x = Math.round(button.x + (button.width - label.width) / 2);
+    let y = button.y + button.height + gap;
+    if (y + label.height > monitor.y + monitor.height)
+        y = button.y - label.height - gap;
+    return {x: Math.max(monitor.x, Math.min(x, monitor.x + monitor.width - label.width)), y: Math.round(y)};
+}
