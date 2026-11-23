@@ -1205,7 +1205,7 @@ checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 
 [[package]]
 name = "headroom-app"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "chrono",
  "glib-build-tools",
@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "headroom-cli"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "headroom-core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "base64 0.23.1",
  "chrono",
