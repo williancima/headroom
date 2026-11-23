@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=dev.headroom.Headroom
+Exec=/usr/bin/headroom-app

@@ -24,7 +24,7 @@ const OWN_PATH = '/dev/headroom/Extension';
 const OWN_IFACE = '<node><interface name="dev.headroom.Extension"><method name="ToggleMenu"/></interface></node>';
 const REFRESH_SECONDS = 60;
 const DEBOUNCE_MS = 500;
-const APP_WAIT_SECONDS = 10;
+const APP_WAIT_SECONDS = 20;
 
 function ago(iso) {
     if (!iso)
@@ -279,11 +279,11 @@ class HeadroomIndicator extends PanelMenu.Button {
             this.menu.close();
         this._whenAppRuns(() => this._activate(name, params, onFail), () => {
             onFail?.();
-            this._setError("Headroom isn't running. Start headroom-app to refresh and manage accounts.");
+            this._setError("Couldn't start Headroom. Run headroom-app in a terminal to see why.");
         });
     }
 
-    // headroom-app owns its bus name a few seconds after login; a click in that window waits for it.
+    // AUTO_START makes the bus start headroom-app (D-Bus activation); a click waits until it owns its name.
     _whenAppRuns(run, missing) {
         let timer = 0;
         let watch = 0;
@@ -296,7 +296,7 @@ class HeadroomIndicator extends PanelMenu.Button {
             then?.();
         };
         this._waits.add(finish);
-        watch = Gio.bus_watch_name(Gio.BusType.SESSION, APP_NAME, Gio.BusNameWatcherFlags.NONE, () => finish(run), null);
+        watch = Gio.bus_watch_name(Gio.BusType.SESSION, APP_NAME, Gio.BusNameWatcherFlags.AUTO_START, () => finish(run), null);
         timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, APP_WAIT_SECONDS, () => {
             timer = 0;
             finish(missing);
@@ -317,7 +317,7 @@ class HeadroomIndicator extends PanelMenu.Button {
                     const gone = e.matches?.(Gio.DBusError, Gio.DBusError.SERVICE_UNKNOWN) ||
                         e.matches?.(Gio.DBusError, Gio.DBusError.NAME_HAS_NO_OWNER);
                     this._setError(gone
-                        ? "Headroom isn't running. Start headroom-app to refresh and manage accounts."
+                        ? "Couldn't start Headroom. Run headroom-app in a terminal to see why."
                         : `Could not reach Headroom: ${e.message}`);
                 }
             });
@@ -498,17 +498,55 @@ class HeadroomIndicator extends PanelMenu.Button {
 
 
 export default class HeadroomExtension extends Extension {
+    // `apt remove` deletes our folder, but GNOME keeps running the loaded code until the next login: watch the
+    // folder and leave the top bar when metadata.json is gone, coming back if it is reinstalled.
     enable() {
+        this._monitor = this.dir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+        this._monitor.connect('changed', () => this._sync());
+        this._sync();
+    }
+
+    _sync() {
+        const installed = this.dir.get_child('metadata.json').query_exists(null);
+        if (installed && !this._indicator)
+            this._show();
+        else if (!installed && this._indicator)
+            this._hide();
+    }
+
+    _show() {
         this._indicator = new HeadroomIndicator(this.dir);
         // The app's Toggle Shortcut calls this; when the call fails (no extension, or an older one) the app opens its own panel.
         this._dbus = Gio.DBusExportedObject.wrapJSObject(OWN_IFACE, {ToggleMenu: () => this._indicator?.menu.toggle()});
         this._dbus.export(Gio.DBus.session, OWN_PATH);
-        this._ownId = Gio.bus_own_name(Gio.BusType.SESSION, OWN_NAME, Gio.BusNameOwnerFlags.NONE, null, null, null);
+        this._ownId = Gio.bus_own_name(Gio.BusType.SESSION, OWN_NAME, Gio.BusNameOwnerFlags.NONE,
+            () => this._startApp(), null, null);
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');
         this._indicator.start();
     }
 
+    // Started once our own name is taken: the app skips its tray icon when it sees that name.
+    _startApp() {
+        if (!this._indicator)
+            return;
+        Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'StartServiceByName', new GLib.Variant('(su)', [APP_NAME, 0]), null,
+            Gio.DBusCallFlags.NONE, -1, null, (conn, res) => {
+                try {
+                    conn.call_finish(res);
+                } catch (e) {
+                    console.error(`Headroom: could not start headroom-app: ${e.message}`);
+                }
+            });
+    }
+
     disable() {
+        this._monitor?.cancel();
+        this._monitor = null;
+        this._hide();
+    }
+
+    _hide() {
         this._indicator?.destroy();
         this._indicator = null;
         if (this._ownId) {

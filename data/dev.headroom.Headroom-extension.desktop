@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Headroom Extension Setup
+Comment=Turns on the Headroom GNOME Shell extension the first time you log in after installing it
+Exec=headroom-app --enable-extension
+TryExec=headroom-app
+OnlyShowIn=GNOME;
+NoDisplay=true
+X-GNOME-Autostart-Notify=false

@@ -88,6 +88,10 @@ fn start_worker(commands: UnboundedSender<Command>, inbox: UnboundedReceiver<Com
 }
 
 fn main() {
+    // The .deb's login autostart: GNOME only loads a system extension it saw at login, and the app may not have run yet.
+    if std::env::args().nth(1).as_deref() == Some("--enable-extension") {
+        return setup::enable_extension_once();
+    }
     // The GL/Vulkan renderer keeps ~70 MB after the panel is first shown, even hidden; cairo keeps ~15 MB and
     // is plenty for a few lists. Set before GTK starts and before any other thread exists.
     if std::env::var_os("GSK_RENDERER").is_none() {

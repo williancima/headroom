@@ -28,6 +28,11 @@ pub fn wrapper_script(appimage: &Path) -> String {
     format!("#!/bin/sh\n{WRAPPER_MARKER}\nexec {} --cli \"$@\"\n", shell_quote(&appimage.to_string_lossy()))
 }
 
+/// Session-bus activation file for an AppImage install: the extension's calls start the app.
+pub fn dbus_service(appimage: &Path) -> String {
+    format!("[D-BUS Service]\nName=dev.headroom.Headroom\nExec={}\n", shell_quote(&appimage.to_string_lossy()))
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum WrapperAction {
     Write,
@@ -82,6 +87,13 @@ mod tests {
         let text = wrapper_script(Path::new("/home/u/My Apps/it's.AppImage"));
         assert!(text.starts_with("#!/bin/sh\n"));
         assert!(text.ends_with("exec '/home/u/My Apps/it'\\''s.AppImage' --cli \"$@\"\n"));
+    }
+
+    #[test]
+    fn dbus_service_execs_the_quoted_appimage() {
+        let text = dbus_service(Path::new("/home/u/My Apps/it's.AppImage"));
+        assert!(text.starts_with("[D-BUS Service]\nName=dev.headroom.Headroom\n"));
+        assert!(text.ends_with("Exec='/home/u/My Apps/it'\\''s.AppImage'\n"));
     }
 
     #[test]

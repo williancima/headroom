@@ -13,8 +13,15 @@ the AppImage in command-line mode. A `headroom` file there that is not that scri
 
 The first time the app starts with the extension installed, it adds `headroom@headroom.dev` to GNOME's
 enabled extensions and remembers that (`~/.local/state/headroom/extension_enabled`). It never enables it
-again, so turning the extension off sticks. Log out and back in once so GNOME loads a new extension. To
-install it from source instead:
+again, so turning the extension off sticks. The `.deb` also does this at login, through
+`/etc/xdg/autostart/dev.headroom.Headroom-extension.desktop` (`headroom-app --enable-extension`, which only
+enables it and exits), so after installing it, logging out and back in shows the extension without opening
+the app. The AppImage needs one start, then a log out and back in, so GNOME loads the new extension.
+GNOME keeps a removed extension's code running until the next login, so the extension watches its own
+folder: after `apt remove headroom` deletes it, the top-bar item goes away at once (and comes back if the
+package is reinstalled in the same session).
+
+To install it from source instead:
 
 Put `headroom` on your PATH or in `~/.local/bin`, run `headroom-app`, then:
 
@@ -38,7 +45,7 @@ is not enabled by the app until it has run once with the extension in place).
 - On **All Usage**, click a **Rate Limit Resets** card to list its resets. **Use** asks "Use This Reset?" with
   what it refills; confirming sends the claim to the app (`claim-reset` action) and the card shows "Using…"
   until the app answers with the `ClaimDone` signal. The outcome shows at the top of the list, and the panel
-  reloads so the spent reset leaves it. Needs `headroom-app` running.
+  reloads so the spent reset leaves it. Needs `headroom-app`, which the bus starts on demand.
 - Right-click a metric for **Pin**/**Unpin** and **Hide**, or a Claude or ChatGPT title for **Unify Multiple
   Accounts**. Drag metrics, accounts and provider titles on **All Usage** to reorder them. These call the app's
   `set-hidden`, `set-pinned`, `set-unified`, `move-metric`, `move-account` and `move-provider` actions; the app
@@ -52,8 +59,10 @@ is not enabled by the app until it has run once with the extension in place).
   it on the clipboard, deletes the file, and shows "Copied to Clipboard". Email addresses are left out. See
   [Dashboard](dashboard.md#copying-as-an-image).
 - The refresh, accounts and settings buttons call the `refresh`, `accounts` and `settings` actions of the
-  running `headroom-app` (see [CLI](cli.md)); settings opens the [Settings](settings.md) window. The
-  extension does not start the app.
+  `headroom-app` (see [CLI](cli.md)); settings opens the [Settings](settings.md) window. If the app is not
+  running, the session bus starts it (D-Bus activation): the .deb installs
+  `/usr/share/dbus-1/services/dev.headroom.Headroom.service`, and the AppImage writes the same file to
+  `~/.local/share/dbus-1/services/` on each launch. The extension also starts the app when it is enabled.
 - Rows that open on click (usage details, unified accounts, rate-limit resets) show a chevron.
 - The extension exports `ToggleMenu` on `dev.headroom.Extension`, so the [Toggle Shortcut](settings.md#toggle-shortcut)
   opens or closes the dropdown.
@@ -66,6 +75,7 @@ is not enabled by the app until it has run once with the extension in place).
 Errors show as a red card in the dropdown (and once in the Shell log: `journalctl -f -o cat /usr/bin/gnome-shell`).
 
 - "The headroom command was not found": install `headroom` on your PATH or in `~/.local/bin`.
-- "Headroom isn't running": start `headroom-app`. A button clicked before the app is up (for example right after
-  login) waits up to 10 seconds for it, then shows this.
+- "Couldn't start Headroom": run `headroom-app` in a terminal to see why it fails. A button clicked before the
+  app is up waits up to 20 seconds for it, then shows this. An AppImage install needs to have run once so
+  the bus knows how to start it.
 - "headroom panel failed": run `headroom panel` in a terminal to see the same error.

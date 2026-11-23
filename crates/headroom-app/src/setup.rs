@@ -35,6 +35,7 @@ pub fn run_startup() {
     if let Some((image, mount)) = appimage() {
         install_extension(&mount);
         install_wrapper(&image);
+        install_dbus_service(&image);
     }
     enable_extension_once();
 }
@@ -97,6 +98,20 @@ fn install_extension(mount: &Path) {
     }
 }
 
+/// Lets the session bus start the AppImage when the extension talks to it.
+fn install_dbus_service(image: &Path) {
+    let path = glib::user_data_dir().join("dbus-1/services/dev.headroom.Headroom.service");
+    let wanted = dbus_service(image);
+    if std::fs::read_to_string(&path).is_ok_and(|text| text == wanted) {
+        return;
+    }
+    let written = std::fs::create_dir_all(path.parent().unwrap_or(&path)).and_then(|()| std::fs::write(&path, wanted));
+    match written {
+        Ok(()) => eprintln!("{NAME}: wrote the D-Bus service at {}", path.display()),
+        Err(error) => eprintln!("{NAME}: could not write the D-Bus service: {error}"),
+    }
+}
+
 fn install_wrapper(image: &Path) {
     use std::os::unix::fs::PermissionsExt;
     let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else { return };
@@ -120,7 +135,7 @@ fn install_wrapper(image: &Path) {
 
 /// Adds the extension to GNOME's enabled list the first time it is installed; never again, since the user may
 /// have switched it off.
-fn enable_extension_once() {
+pub fn enable_extension_once() {
     let installed = Path::new("/usr/share/gnome-shell/extensions").join(EXTENSION_UUID).join("metadata.json").is_file()
         || user_extension_dir().join("metadata.json").is_file();
     let state = dirs_state().join("extension_enabled");
@@ -251,6 +266,16 @@ pub fn spawn_background(commands: UnboundedSender<Command>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_deb_login_autostart_enables_the_extension_only_where_the_app_exists() {
+        let entry = include_str!("../../../data/dev.headroom.Headroom-extension.desktop");
+        assert!(entry.lines().any(|l| l == "Exec=headroom-app --enable-extension"));
+        assert!(entry.lines().any(|l| l == "TryExec=headroom-app"));
+        assert!(entry.lines().any(|l| l == "OnlyShowIn=GNOME;"));
+        let manifest = include_str!("../Cargo.toml");
+        assert!(manifest.contains(r#"["../../data/dev.headroom.Headroom-extension.desktop", "etc/xdg/autostart/", "644"]"#));
+    }
 
     #[test]
     fn the_new_appimage_replaces_the_old_one_without_following_a_planted_part() {
