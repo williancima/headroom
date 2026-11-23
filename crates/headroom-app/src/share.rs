@@ -12,7 +12,7 @@ const SCALE: f32 = 2.0;
 const FOOTER: f32 = 40.0;
 const ICON_SIZE: f32 = 20.0;
 const PROVIDER_ICON: f32 = 16.0;
-const MARGIN: f32 = 32.0;
+const MARGIN: f32 = 20.0;
 const RADIUS: f32 = 12.0;
 const ICON: &[u8] = include_bytes!("../../../data/icons/hicolor/scalable/apps/dev.headroom.Headroom.svg");
 
@@ -165,7 +165,7 @@ pub fn render(card: &ShareCard, widget: &impl IsA<gtk::Widget>) -> Result<gdk::T
     let root = gtk::Snapshot::new();
     root.scale(SCALE, SCALE);
     root.translate(&graphene::Point::new(MARGIN, MARGIN));
-    root.append_outset_shadow(&rounded, &gdk::RGBA::new(0.0, 0.0, 0.0, 0.35), 0.0, 6.0, 0.0, 18.0);
+    root.append_outset_shadow(&rounded, &gdk::RGBA::new(0.0, 0.0, 0.0, 0.35), 0.0, 4.0, 0.0, 12.0);
     root.push_rounded_clip(&rounded);
     root.append_color(&colors.background, &card);
     root.append_node(&content);
