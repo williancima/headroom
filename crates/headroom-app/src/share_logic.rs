@@ -8,8 +8,9 @@ use serde::Deserialize;
 pub enum Block {
     /// A group or section title.
     Heading(String),
-    /// A name on the left and a value on the right (either may be empty).
-    Line { name: String, value: String },
+    /// A name on the left and a value on the right (either may be empty), after the icon of the provider
+    /// `icon` names (`ProviderKind::id()`; empty for none).
+    Line { name: String, value: String, icon: String },
     /// A bar filled from 0 to 1.
     Meter(f64),
     /// Wrapped secondary text.
@@ -19,6 +20,8 @@ pub enum Block {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShareCard {
     pub title: Option<String>,
+    /// The provider (`ProviderKind::id()`) whose icon goes before the title; empty for none.
+    pub icon: String,
     pub blocks: Vec<Block>,
 }
 
@@ -43,7 +46,7 @@ pub fn priority_card(groups: &[Group]) -> ShareCard {
             blocks.push(Block::Heading(strip_emails(&group.title)));
         }
         for row in &group.rows {
-            blocks.push(Block::Line { name: strip_emails(&row.title), value: strip_emails(row.value.as_deref().unwrap_or_default()) });
+            blocks.push(Block::Line { name: strip_emails(&row.title), value: strip_emails(row.value.as_deref().unwrap_or_default()), icon: row.kind.clone() });
             if let Some(fraction) = row.meter {
                 blocks.push(Block::Meter(fraction));
             }
@@ -53,11 +56,11 @@ pub fn priority_card(groups: &[Group]) -> ShareCard {
             }
         }
     }
-    ShareCard { title: Some("Priority".into()), blocks }
+    ShareCard { title: Some("Priority".into()), icon: String::new(), blocks }
 }
 
 /// One history row's breakdown under the provider's name, as the breakdown panel lists it.
-pub fn breakdown_card(provider: &str, breakdown: &BreakdownView) -> ShareCard {
+pub fn breakdown_card(provider: &str, kind: &str, breakdown: &BreakdownView) -> ShareCard {
     let mut blocks = vec![Block::Heading(strip_emails(&breakdown.title))];
     if breakdown.empty {
         blocks.push(Block::Text(format!("{} didn't report any data for this range.", strip_emails(provider))));
@@ -66,17 +69,17 @@ pub fn breakdown_card(provider: &str, breakdown: &BreakdownView) -> ShareCard {
             blocks.push(Block::Text(breakdown.figures.join(" · ")));
         }
         for part in &breakdown.token_parts {
-            blocks.push(Block::Line { name: part.title.clone(), value: part.value.clone() });
+            blocks.push(Block::Line { name: part.title.clone(), value: part.value.clone(), icon: String::new() });
             if let Some(fraction) = part.fraction {
                 blocks.push(Block::Meter(fraction));
             }
         }
         if !breakdown.models.is_empty() {
-            blocks.push(Block::Line { name: "Top Models".into(), value: breakdown.models_label.clone().unwrap_or_default() });
-            blocks.extend(breakdown.models.iter().map(|m| Block::Line { name: strip_emails(&m.name), value: m.value.clone() }));
+            blocks.push(Block::Line { name: "Top Models".into(), value: breakdown.models_label.clone().unwrap_or_default(), icon: String::new() });
+            blocks.extend(breakdown.models.iter().map(|m| Block::Line { name: strip_emails(&m.name), value: m.value.clone(), icon: String::new() }));
         }
     }
-    ShareCard { title: Some(strip_emails(provider)), blocks }
+    ShareCard { title: Some(strip_emails(provider)), icon: kind.into(), blocks }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -140,7 +143,7 @@ mod tests {
             unifiable: false,
             unified: false,
             rows: vec![
-                Row { title: "Session".into(), subtitle: "Claude · a@b.com · resets in 3h".into(), meter: Some(0.4), value: Some("40% used".into()), ..Row::default() },
+                Row { title: "Session".into(), subtitle: "Claude · a@b.com · resets in 3h".into(), meter: Some(0.4), value: Some("40% used".into()), kind: "claude".into(), ..Row::default() },
                 Row { title: "All Clear".into(), subtitle: "a@b.com".into(), ..Row::default() },
             ],
         };
@@ -149,10 +152,10 @@ mod tests {
             card.blocks,
             vec![
                 Block::Heading("Running Out".into()),
-                Block::Line { name: "Session".into(), value: "40% used".into() },
+                Block::Line { name: "Session".into(), value: "40% used".into(), icon: "claude".into() },
                 Block::Meter(0.4),
                 Block::Text("Claude · resets in 3h".into()),
-                Block::Line { name: "All Clear".into(), value: String::new() },
+                Block::Line { name: "All Clear".into(), value: String::new(), icon: String::new() },
             ]
         );
     }
@@ -167,13 +170,14 @@ mod tests {
             models_label: Some("Cost".into()),
             models: vec![ModelLine { name: "m1".into(), value: "$1".into() }],
         };
-        let card = breakdown_card("OpenCode · a@b.com", &view);
+        let card = breakdown_card("OpenCode · a@b.com", "opencode", &view);
         assert_eq!(card.title.as_deref(), Some("OpenCode"));
+        assert_eq!(card.icon, "opencode");
         assert_eq!(card.blocks.len(), 7);
         assert_eq!(card.blocks[3], Block::Meter(0.5));
-        assert_eq!(card.blocks[5], Block::Line { name: "Top Models".into(), value: "Cost".into() });
+        assert_eq!(card.blocks[5], Block::Line { name: "Top Models".into(), value: "Cost".into(), icon: String::new() });
         let empty = BreakdownView { empty: true, ..view };
-        assert_eq!(breakdown_card("Claude", &empty).blocks[1], Block::Text("Claude didn't report any data for this range.".into()));
+        assert_eq!(breakdown_card("Claude", "claude", &empty).blocks[1], Block::Text("Claude didn't report any data for this range.".into()));
     }
 
     #[test]

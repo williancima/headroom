@@ -10,6 +10,11 @@ const WIDTH: f32 = 360.0;
 const INSET: f32 = 16.0;
 const SCALE: f32 = 2.0;
 const FOOTER: f32 = 40.0;
+const ICON_SIZE: f32 = 20.0;
+const PROVIDER_ICON: f32 = 16.0;
+const MARGIN: f32 = 32.0;
+const RADIUS: f32 = 12.0;
+const ICON: &[u8] = include_bytes!("../../../data/icons/hicolor/scalable/apps/dev.headroom.Headroom.svg");
 
 struct Colors {
     background: gdk::RGBA,
@@ -33,6 +38,7 @@ impl Colors {
 struct Pen<'a> {
     snapshot: gtk::Snapshot,
     context: pango::Context,
+    theme: gtk::IconTheme,
     colors: &'a Colors,
 }
 
@@ -56,6 +62,16 @@ impl Pen<'_> {
         self.snapshot.restore();
     }
 
+    /// A provider's symbolic icon (`icons.rs` registers them), tinted with the text color.
+    fn provider_icon(&self, kind: &str, x: f32, y: f32) {
+        let name = format!("headroom-provider-{kind}-symbolic");
+        let icon = self.theme.lookup_icon(&name, &[], (PROVIDER_ICON * SCALE) as i32, 1, gtk::TextDirection::None, gtk::IconLookupFlags::FORCE_SYMBOLIC);
+        self.snapshot.save();
+        self.snapshot.translate(&graphene::Point::new(x, y));
+        icon.snapshot_symbolic(&self.snapshot, PROVIDER_ICON.into(), PROVIDER_ICON.into(), &[self.colors.text]);
+        self.snapshot.restore();
+    }
+
     fn rect(&self, x: f32, y: f32, w: f32, h: f32, color: &gdk::RGBA, radius: f32) {
         let rect = graphene::Rect::new(x, y, w, h);
         self.snapshot.push_rounded_clip(&gsk::RoundedRect::from_rect(rect, radius));
@@ -75,7 +91,15 @@ impl Pen<'_> {
     fn blocks(&self, card: &ShareCard, mut y: f32) -> f32 {
         let inner = WIDTH - 2.0 * INSET;
         if let Some(title) = &card.title {
-            y += self.single(title, 15.0, true, &self.colors.text, y) + 10.0;
+            let indent = if card.icon.is_empty() { 0.0 } else { PROVIDER_ICON + 8.0 };
+            let layout = self.layout(title, 15.0, true, inner - indent);
+            layout.set_ellipsize(pango::EllipsizeMode::End);
+            let height = layout.pixel_size().1 as f32;
+            if !card.icon.is_empty() {
+                self.provider_icon(&card.icon, INSET, y + (height - PROVIDER_ICON) / 2.0);
+            }
+            self.text(&layout, INSET + indent, y, &self.colors.text);
+            y += height + 10.0;
         }
         for (i, block) in card.blocks.iter().enumerate() {
             match block {
@@ -85,12 +109,16 @@ impl Pen<'_> {
                     }
                     y += self.single(text, 13.0, true, &self.colors.text, y) + 4.0;
                 }
-                Block::Line { name, value } => {
+                Block::Line { name, value, icon } => {
+                    let indent = if icon.is_empty() { 0.0 } else { PROVIDER_ICON + 8.0 };
                     let value_layout = self.layout(value, 13.0, false, inner);
                     let value_width = if value.is_empty() { 0.0 } else { value_layout.pixel_size().0 as f32 + 8.0 };
-                    let name_layout = self.layout(name, 13.0, false, inner - value_width);
+                    let name_layout = self.layout(name, 13.0, false, inner - value_width - indent);
                     name_layout.set_ellipsize(pango::EllipsizeMode::End);
-                    self.text(&name_layout, INSET, y, &self.colors.text);
+                    if !icon.is_empty() {
+                        self.provider_icon(icon, INSET, y + (name_layout.pixel_size().1 as f32 - PROVIDER_ICON) / 2.0);
+                    }
+                    self.text(&name_layout, INSET + indent, y, &self.colors.text);
                     self.text(&value_layout, WIDTH - INSET - value_layout.pixel_size().0 as f32, y, &self.colors.dim);
                     y += name_layout.pixel_size().1 as f32 + 4.0;
                 }
@@ -113,31 +141,41 @@ impl Pen<'_> {
     }
 }
 
-/// The card as a texture: 360 logical points wide at 2x, on an opaque background for the current scheme.
+/// The card as a texture: 360 logical points wide at 2x, a rounded card with a drop shadow on a transparent
+/// margin, like GNOME's window screenshots.
 pub fn render(card: &ShareCard, widget: &impl IsA<gtk::Widget>) -> Result<gdk::Texture, String> {
     let colors = Colors::new(relm4::adw::StyleManager::default().is_dark());
-    let pen = Pen { snapshot: gtk::Snapshot::new(), context: widget.pango_context(), colors: &colors };
+    let theme = gtk::IconTheme::for_display(&widget.display());
+    let pen = Pen { snapshot: gtk::Snapshot::new(), context: widget.pango_context(), theme, colors: &colors };
     let content_end = pen.blocks(card, INSET) + INSET;
-    // The footer strip: a thin top line, the name on the left and the tagline on the right.
+    // The footer strip: a thin top line, the icon and name on the left and the tagline on the right.
     pen.rect(0.0, content_end, WIDTH, 0.5, &colors.dim, 0.0);
+    let icon = gdk::Texture::from_bytes(&gtk::glib::Bytes::from_static(ICON)).map_err(|e| format!("could not load the icon: {e}"))?;
+    pen.snapshot.append_texture(&icon, &graphene::Rect::new(INSET, content_end + (FOOTER - ICON_SIZE) / 2.0, ICON_SIZE, ICON_SIZE));
     let name = pen.layout("Headroom", 13.0, true, WIDTH);
     let tagline = pen.layout("Usage limits of your AI coding accounts", 11.0, false, WIDTH);
     let text_y = |h: i32| content_end + (FOOTER - h as f32) / 2.0;
-    pen.text(&name, INSET, text_y(name.pixel_size().1), &colors.text);
+    pen.text(&name, INSET + ICON_SIZE + 8.0, text_y(name.pixel_size().1), &colors.text);
     pen.text(&tagline, WIDTH - INSET - tagline.pixel_size().0 as f32, text_y(tagline.pixel_size().1), &colors.dim);
     let height = content_end + FOOTER;
 
     let content = pen.snapshot.to_node().ok_or("the card is empty")?;
+    let card = graphene::Rect::new(0.0, 0.0, WIDTH, height);
+    let rounded = gsk::RoundedRect::from_rect(card, RADIUS);
     let root = gtk::Snapshot::new();
     root.scale(SCALE, SCALE);
-    root.append_color(&colors.background, &graphene::Rect::new(0.0, 0.0, WIDTH, height));
+    root.translate(&graphene::Point::new(MARGIN, MARGIN));
+    root.append_outset_shadow(&rounded, &gdk::RGBA::new(0.0, 0.0, 0.0, 0.35), 0.0, 6.0, 0.0, 18.0);
+    root.push_rounded_clip(&rounded);
+    root.append_color(&colors.background, &card);
     root.append_node(&content);
+    root.pop();
     let node = root.to_node().ok_or("the card is empty")?;
 
     let display = gdk::Display::default().ok_or("no display")?;
     let renderer = gsk::CairoRenderer::new();
     renderer.realize_for_display(&display).map_err(|e| format!("could not start the renderer: {e}"))?;
-    let bounds = graphene::Rect::new(0.0, 0.0, WIDTH * SCALE, height * SCALE);
+    let bounds = graphene::Rect::new(0.0, 0.0, (WIDTH + 2.0 * MARGIN) * SCALE, (height + 2.0 * MARGIN) * SCALE);
     let texture = renderer.render_texture(&node, Some(&bounds));
     renderer.unrealize();
     Ok(texture)

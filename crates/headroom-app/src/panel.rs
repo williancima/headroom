@@ -42,7 +42,7 @@ pub enum PanelMsg {
     TabChanged,
     /// The Priority copy button, or the Copy button of a history row's breakdown.
     CopyPriority,
-    CopyBreakdown { provider: String, breakdown: Box<headroom_core::history::BreakdownView> },
+    CopyBreakdown { provider: String, kind: String, breakdown: Box<headroom_core::history::BreakdownView> },
     /// The `share-image` action's JSON.
     ShareImage(String),
     /// A claim answered. `settled` is false for a claim that may still land, which a retry resends.
@@ -132,7 +132,7 @@ impl Page {
                 let built: gtk::Widget = if !row.resets.is_empty() {
                     resets.row(row).upcast()
                 } else if let Some(breakdown) = &row.breakdown {
-                    history.row(&group.title, row.card_id.as_deref().unwrap_or_default(), &row.title, breakdown).upcast()
+                    history.row(&group.title, &group.kind, row.card_id.as_deref().unwrap_or_default(), &row.title, breakdown).upcast()
                 } else if !row.members.is_empty() {
                     history.members(row).upcast()
                 } else {
@@ -190,7 +190,7 @@ impl Panel {
             (Some(m), Kind::Priority) => Some(share_logic::priority_card(&priority_groups(m))),
             (Some(m), Kind::Breakdown { row_id }) => usage_groups(m).iter().find_map(|g| {
                 let row = g.rows.iter().find(|r| r.id.as_deref() == Some(row_id) && r.breakdown.is_some())?;
-                Some(share_logic::breakdown_card(&g.title, row.breakdown.as_ref()?))
+                Some(share_logic::breakdown_card(&g.title, &g.kind, row.breakdown.as_ref()?))
             }),
         };
         let done = match card {
@@ -342,7 +342,7 @@ impl SimpleComponent for Panel {
                 let card = self.model.as_ref().map(|m| share_logic::priority_card(&priority_groups(m)));
                 self.copy_image(card);
             }
-            PanelMsg::CopyBreakdown { provider, breakdown } => self.copy_image(Some(share_logic::breakdown_card(&provider, &breakdown))),
+            PanelMsg::CopyBreakdown { provider, kind, breakdown } => self.copy_image(Some(share_logic::breakdown_card(&provider, &kind, &breakdown))),
             PanelMsg::ShareImage(text) => self.share_image(&text),
             PanelMsg::Redraw => {
                 if let Some(model) = &self.model {

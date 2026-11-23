@@ -65,7 +65,7 @@ impl History {
     }
 
     /// `card_id` and `title` tell one account's row apart from another account's row of the same provider.
-    pub fn row(&self, provider: &str, card_id: &str, title: &str, breakdown: &BreakdownView) -> adw::ExpanderRow {
+    pub fn row(&self, provider: &str, kind: &str, card_id: &str, title: &str, breakdown: &BreakdownView) -> adw::ExpanderRow {
         let key = format!("{card_id}\u{1f}{title}");
         let sections = sections(breakdown);
         let expander = adw::ExpanderRow::builder()
@@ -83,7 +83,7 @@ impl History {
         });
         expander.add_row(&line(&breakdown.title, "", None));
         if !breakdown.empty {
-            expander.add_row(&copy_row(provider, breakdown));
+            expander.add_row(&copy_row(provider, kind, breakdown));
         }
         if sections.nothing_to_show {
             expander.add_row(&line(&format!("{provider} didn't report any data for this range."), "", None));
@@ -103,13 +103,13 @@ impl History {
 }
 
 /// A Copy button that puts this breakdown's image on the clipboard.
-fn copy_row(provider: &str, breakdown: &BreakdownView) -> adw::ActionRow {
+fn copy_row(provider: &str, kind: &str, breakdown: &BreakdownView) -> adw::ActionRow {
     let button = gtk::Button::builder().label("Copy").valign(gtk::Align::Center).build();
     button.update_property(&[gtk::accessible::Property::Label("Copy Usage Image")]);
-    let msg = (provider.to_string(), Box::new(breakdown.clone()));
+    let msg = (provider.to_string(), kind.to_string(), Box::new(breakdown.clone()));
     button.connect_clicked(move |_| {
-        let (provider, breakdown) = msg.clone();
-        let _ = crate::panel::BROKER.sender().send(crate::panel::PanelMsg::CopyBreakdown { provider, breakdown });
+        let (provider, kind, breakdown) = msg.clone();
+        let _ = crate::panel::BROKER.sender().send(crate::panel::PanelMsg::CopyBreakdown { provider, kind, breakdown });
     });
     let row = adw::ActionRow::new();
     row.add_suffix(&button);
