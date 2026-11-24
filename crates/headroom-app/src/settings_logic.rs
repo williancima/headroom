@@ -33,7 +33,7 @@ fn exec_argument(arg: &str) -> String {
 pub fn autostart_contents(exe: &Path) -> String {
     let mut text: String = DESKTOP_TEMPLATE
         .lines()
-        .map(|line| if line.starts_with("Exec=") { format!("Exec={}", exec_argument(&exe.to_string_lossy())) } else { line.to_string() })
+        .map(|line| if line.starts_with("Exec=") { autostart_exec(exe) } else { line.to_string() })
         .collect::<Vec<_>>()
         .join("\n");
     text.push_str("\nX-GNOME-Autostart-enabled=true\n");
@@ -42,8 +42,13 @@ pub fn autostart_contents(exe: &Path) -> String {
 
 /// True when the autostart file's `Exec` is not this binary (it moved, or another install took over).
 pub fn autostart_stale(contents: &str, exe: &Path) -> bool {
-    let wanted = format!("Exec={}", exec_argument(&exe.to_string_lossy()));
+    let wanted = autostart_exec(exe);
     !contents.lines().any(|line| line == wanted)
+}
+
+/// `--background`: a login start that finds Headroom already running leaves it alone.
+fn autostart_exec(exe: &Path) -> String {
+    format!("Exec={} --background", exec_argument(&exe.to_string_lossy()))
 }
 
 pub const KEYBINDING_PATH: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/headroom-toggle/";
@@ -89,7 +94,7 @@ mod tests {
     #[test]
     fn autostart_file_runs_this_binary_and_is_enabled() {
         let text = autostart_contents(Path::new("/opt/headroom/headroom-app"));
-        assert!(text.contains("\nExec=/opt/headroom/headroom-app\n"));
+        assert!(text.contains("\nExec=/opt/headroom/headroom-app --background\n"));
         assert!(text.contains("Name=Headroom") && text.contains("Type=Application"));
         assert_eq!(text.matches("Exec=").count(), 1);
         assert!(text.ends_with("X-GNOME-Autostart-enabled=true\n"));
@@ -101,6 +106,8 @@ mod tests {
         assert!(!autostart_stale(&text, Path::new("/old/Headroom.AppImage")));
         assert!(autostart_stale(&text, Path::new("/usr/bin/headroom-app")));
         assert!(autostart_stale("[Desktop Entry]\n", Path::new("/usr/bin/headroom-app")));
+        // Written before `--background`: rewritten, or a login start could open the window.
+        assert!(autostart_stale("Exec=/usr/bin/headroom-app\n", Path::new("/usr/bin/headroom-app")));
     }
 
     #[test]

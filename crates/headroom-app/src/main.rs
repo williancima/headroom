@@ -28,7 +28,9 @@ use headroom_core::claim::ResetRef;
 use headroom_core::copilot::GitHubDomain;
 use headroom_core::ProviderKind;
 use panel::{Panel, PanelMsg, BROKER};
+use relm4::gtk::{gio, glib, prelude::*};
 use relm4::RelmApp;
+use std::ops::ControlFlow;
 use std::panic::AssertUnwindSafe;
 use uuid::Uuid;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -98,5 +100,23 @@ fn main() {
         std::env::set_var("GSK_RENDERER", "cairo");
     }
     // The first launch starts hidden; `Panel` shows the window when a later launch activates this process.
-    RelmApp::new(APP_ID).with_broker(&BROKER).visible_on_activate(false).run::<Panel>(unbounded_channel());
+    let relm = RelmApp::new(APP_ID).with_broker(&BROKER).visible_on_activate(false);
+    // Login autostart and the extension's D-Bus start race at login. The loser would activate the winner, which
+    // opens its window, so a `--background` start that finds Headroom running exits instead.
+    let app = relm4::main_application();
+    app.add_main_option("background", glib::Char::from(0), glib::OptionFlags::NONE, glib::OptionArg::None, "Start without the window", None);
+    app.connect_handle_local_options(|app, options| {
+        if !options.contains("background") {
+            return ControlFlow::Continue(());
+        }
+        match app.register(gio::Cancellable::NONE) {
+            Ok(()) if app.is_remote() => ControlFlow::Break(glib::ExitCode::SUCCESS),
+            Ok(()) => ControlFlow::Continue(()),
+            Err(error) => {
+                eprintln!("{NAME}: could not register on the session bus: {error}");
+                ControlFlow::Break(glib::ExitCode::FAILURE)
+            }
+        }
+    });
+    relm.run::<Panel>(unbounded_channel());
 }

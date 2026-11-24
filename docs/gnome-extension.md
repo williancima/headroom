@@ -71,6 +71,8 @@ is not enabled by the app until it has run once with the extension in place).
   running, the session bus starts it (D-Bus activation): the .deb installs
   `/usr/share/dbus-1/services/dev.headroom.Headroom.service`, and the AppImage writes the same file to
   `~/.local/share/dbus-1/services/` on each launch. The extension also starts the app when it is enabled.
+  These starts and Launch at Login pass `--background`: a start that finds Headroom already running exits
+  without opening its window.
 - Rows that open on click (usage details, unified accounts, rate-limit resets) show a chevron.
 - The extension exports `ToggleMenu` on `dev.headroom.Extension`, so the [Toggle Shortcut](settings.md#toggle-shortcut)
   opens or closes the dropdown.
