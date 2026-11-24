@@ -45,7 +45,8 @@ headroom panel                                    # what the panel shows, as JSO
   key or blocks this machine, nothing more is sent to it until the key is replaced. Plain `http://` is
   accepted only for this machine, the local network, and Tailscale.
 - `headroom panel` prints, from saved usage, what the panel and tray display. It never fetches (the app
-  does that) and exits 0. Its fields: `label` (the top-bar text), `updated_at` (the newest reading, or `null`
+  does that) and exits 0. Its fields: `label` (the tray text), `bar` (the top-bar items, each `{ "kind", "text" }`
+  with `kind` the provider id), `bar_overflow` (how many more limits are running out), `updated_at` (the newest reading, or `null`
   if there is none), and `priority` and `usage` (the two tabs). Each tab is a list of groups shaped
   `{ "title", "rows" }`, and each row is `{ "title", "subtitle", "meter", "value" }`; `meter` (a bar fill
   between 0 and 1) and `value` are `null` for rows without them. A "Rate Limit Resets" row also carries

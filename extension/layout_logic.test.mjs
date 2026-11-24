@@ -1,6 +1,6 @@
 // Run: node extension/layout_logic.test.mjs
 import assert from 'node:assert/strict';
-import {roles, menuIds, metricLabel, dropAction, providerIconFile, tooltipPosition} from './layout_logic.js';
+import {roles, menuIds, metricLabel, dropAction, providerIconFile, tooltipPosition, barParts} from './layout_logic.js';
 
 const group = {kind: 'claude', unified: false, rows: [
     {title: 'Claude · a', card_id: 'c1'},
@@ -31,6 +31,15 @@ assert.deepEqual(dropAction({type: 'account', cardId: 'c1'}, {type: 'account', c
 assert.deepEqual(dropAction({type: 'provider', kind: 'claude'}, {type: 'provider', kind: 'codex'}), ['move-provider', '(ss)', ['claude', 'codex']]);
 assert.equal(dropAction({type: 'account', cardId: 'c1'}, {type: 'provider', kind: 'x'}), null);
 assert.equal(providerIconFile('claude'), 'icons/headroom-provider-claude-symbolic.svg');
+
+const appIcon = [{icon: 'icons/dev.headroom.Headroom-symbolic.svg'}];
+assert.deepEqual(barParts(null), appIcon);
+assert.deepEqual(barParts({bar: [], bar_overflow: 0}), appIcon);
+assert.deepEqual(barParts({bar: [{kind: 'claude', text: 'Session 8%'}, {kind: 'codex', text: 'Weekly 20%'}], bar_overflow: 2}), [
+    {icon: 'icons/headroom-provider-claude-symbolic.svg', text: 'Session 8%'},
+    {icon: 'icons/headroom-provider-codex-symbolic.svg', text: 'Weekly 20%'},
+    {text: '+2'},
+]);
 console.log('ok');
 
 const monitor = {x: 0, y: 0, width: 1000, height: 800};

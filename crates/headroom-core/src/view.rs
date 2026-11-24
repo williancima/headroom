@@ -52,15 +52,29 @@ impl PanelModel {
 
     /// The top-bar text.
     pub fn label(&self) -> String {
-        let settings = Settings::default();
-        label_text(&menu_bar_content(&self.board, settings.menu_bar_limit, settings.always_show))
+        label_text(&self.menu_bar())
     }
+
+    fn menu_bar(&self) -> MenuBarContent {
+        let settings = Settings::default();
+        menu_bar_content(&self.board, settings.menu_bar_limit, settings.always_show)
+    }
+}
+
+/// One top-bar item: the provider's icon, then `"{short label} {value}"`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct BarItem {
+    pub kind: String,
+    pub text: String,
 }
 
 /// What `headroom panel` prints.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PanelView {
+    /// The top bar as plain text, for extensions older than `bar`.
     pub label: String,
+    pub bar: Vec<BarItem>,
+    pub bar_overflow: usize,
     /// The newest reading among the accounts; `None` before anything was fetched.
     pub updated_at: Option<DateTime<Utc>>,
     pub priority: Vec<Group>,
@@ -70,7 +84,16 @@ pub struct PanelView {
 impl PanelView {
     pub fn new(model: &PanelModel) -> Self {
         let updated_at = model.accounts.iter().filter_map(|a| model.snapshots.get(&a.card_id())).map(|s| s.refreshed_at).max();
-        Self { label: model.label(), updated_at, priority: priority_groups(model), usage: usage_groups(model) }
+        let content = model.menu_bar();
+        let bar = content.items.iter().map(|i| BarItem { kind: kind_of(model, &i.card_id), text: format!("{} {}", i.short_label, i.value) }).collect();
+        Self {
+            label: label_text(&content),
+            bar,
+            bar_overflow: content.overflow,
+            updated_at,
+            priority: priority_groups(model),
+            usage: usage_groups(model),
+        }
     }
 }
 
@@ -443,8 +466,10 @@ mod tests {
         let m = PanelModel::build(vec![a.clone()], vec![], snapshots, &HashMap::new(), &BurningFast::default(), &Layout::default(), &Settings::default(), now());
         let json = serde_json::to_value(PanelView::new(&m)).unwrap();
         let keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
-        assert_eq!(keys, ["label", "priority", "updated_at", "usage"]);
+        assert_eq!(keys, ["bar", "bar_overflow", "label", "priority", "updated_at", "usage"]);
         assert_eq!(json["label"], m.label());
+        assert_eq!(json["bar"], serde_json::json!([{ "kind": "claude", "text": m.label() }]));
+        assert_eq!(json["bar_overflow"], 0);
         assert_eq!(json["updated_at"], "2027-01-15T07:58:00Z");
         let row = &json["priority"][0]["rows"][0];
         assert_eq!(row["title"], "Weekly");

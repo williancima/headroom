@@ -1,7 +1,8 @@
 # GNOME Shell Extension
 
 A top-bar panel for GNOME Shell 46 to 51 (Ubuntu 24.04 and later). It shows the same limits as the app's
-panel: the tray text becomes the top-bar label, and clicking it opens a dropdown with **Priority** and
+panel: the top bar shows the limits running out (up to 3, then `+N`), each with its provider's icon, or only the
+Headroom icon when nothing is running out. Clicking it opens a dropdown with **Priority** and
 **All Usage**, "Updated X ago", and a row of round icon buttons: copy (Priority tab only), refresh, accounts and settings.
 
 ## Install

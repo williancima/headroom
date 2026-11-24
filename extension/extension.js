@@ -12,7 +12,7 @@ import {ResetFlow, claimParameter, liveKeys} from './resets_logic.js';
 import {resetsList} from './resets.js';
 import {BreakdownOpen} from './breakdown_logic.js';
 import {breakdownPanel} from './breakdown.js';
-import {menuIds, metricLabel, roles} from './layout_logic.js';
+import {barParts, menuIds, metricLabel, roles} from './layout_logic.js';
 import {Share} from './share.js';
 import {priorityCopyVisible} from './share_logic.js';
 import {choiceBar, clickable, membersPanel, meter, providerIcon, reorderable, tabTrack, tooltip, vbox, wrap} from './layout.js';
@@ -76,14 +76,9 @@ class HeadroomIndicator extends PanelMenu.Button {
         this._toggleSignal = 0;
         this._restore = 0;
 
-        const box = new St.BoxLayout({style_class: 'panel-status-menu-box'});
-        box.add_child(new St.Icon({
-            gicon: Gio.icon_new_for_string(dir.get_child('icons/dev.headroom.Headroom-symbolic.svg').get_path()),
-            style_class: 'system-status-icon',
-        }));
-        this._label = new St.Label({text: 'Headroom', y_align: Clutter.ActorAlign.CENTER});
-        box.add_child(this._label);
-        this.add_child(box);
+        this._bar = new St.BoxLayout({style_class: 'panel-status-menu-box'});
+        this.add_child(this._bar);
+        this._drawBar();
 
         this.menu.box.add_style_class_name('headroom-menu');
         this._buildMenu();
@@ -339,10 +334,24 @@ class HeadroomIndicator extends PanelMenu.Button {
         });
     }
 
+    _drawBar() {
+        this._bar.destroy_all_children();
+        for (const {icon, text} of barParts(this._data)) {
+            if (icon) {
+                this._bar.add_child(new St.Icon({
+                    gicon: Gio.icon_new_for_string(this._dir.get_child(icon).get_path()),
+                    style_class: 'system-status-icon',
+                }));
+            }
+            if (text)
+                this._bar.add_child(new St.Label({text, y_align: Clutter.ActorAlign.CENTER}));
+        }
+    }
+
     _render() {
         const scrolled = this._scroll.vadjustment?.value ?? 0;
         this._flow.reconcile(liveKeys(this._data?.usage));
-        this._label.set_text(this._data?.label || 'Headroom');
+        this._drawBar();
         for (const [k, b] of Object.entries(this._tabs)) {
             if (k === this._tab)
                 b.add_style_class_name('headroom-tab-active');

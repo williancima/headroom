@@ -51,6 +51,17 @@ export function providerIconFile(kind) {
     return `icons/headroom-provider-${kind}-symbolic.svg`;
 }
 
+// The top bar: the Headroom icon alone when nothing is running out, else each item's provider icon and text, then `+N`.
+export function barParts(data) {
+    const items = data?.bar ?? [];
+    if (!items.length)
+        return [{icon: 'icons/dev.headroom.Headroom-symbolic.svg'}];
+    const parts = items.map(i => ({icon: providerIconFile(i.kind), text: i.text}));
+    if (data.bar_overflow)
+        parts.push({text: `+${data.bar_overflow}`});
+    return parts;
+}
+
 // Where a tooltip goes: centered under the button (above it near the screen's bottom), inside the monitor.
 export function tooltipPosition(button, label, monitor, gap = 6) {
     const x = Math.round(button.x + (button.width - label.width) / 2);
