@@ -13,7 +13,8 @@ file that is out of range or not one of the choices is corrected on read, and a 
   `~/.config/autostart/dev.headroom.Headroom.desktop`, running the binary that is open now (the AppImage
   file when you run one, not its temporary mount), and turning it off deletes the file. On start the app
   rewrites the file if its path no longer matches, for example after the AppImage moved or a `.deb` replaced
-  a source build. The switch shows whether that file exists; it is not saved in `settings.json`.
+  a source build. The switch shows whether that file exists; it is not saved in `settings.json`. With the
+  [GNOME Shell extension](gnome-extension.md) it is optional: the extension starts the app at login.
 - **Refresh Every**: how often the app [refreshes](refreshing.md) every account. Choices are 5, 10, 15, 30
   and 60 minutes; the default is 5.
 - **Toggle Shortcut**: see [below](#toggle-shortcut).
