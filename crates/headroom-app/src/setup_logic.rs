@@ -60,9 +60,28 @@ pub fn sync_plan(shipped: &Files, installed: &Files) -> (Vec<String>, Vec<String
     (copy, remove)
 }
 
+/// GNOME Shell only loads a newly installed extension at login. True on GNOME when the extension is installed and
+/// switched on but not running yet; false when the user switched it (or all user extensions) off.
+pub fn needs_relogin(desktop: &str, installed: bool, enabled: &[String], user_extensions_off: bool, running: bool) -> bool {
+    desktop.split(':').any(|d| d == "GNOME") && installed && enabled.iter().any(|e| e == EXTENSION_UUID) && !user_extensions_off && !running
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn relogin_needed_only_for_an_enabled_extension_that_is_not_running() {
+        let on = vec!["other@x".to_string(), EXTENSION_UUID.to_string()];
+        let off = vec!["other@x".to_string()];
+        assert!(needs_relogin("ubuntu:GNOME", true, &on, false, false));
+        assert!(!needs_relogin("ubuntu:GNOME", true, &on, false, true), "already running");
+        assert!(!needs_relogin("ubuntu:GNOME", true, &off, false, false), "switched off by the user");
+        assert!(!needs_relogin("ubuntu:GNOME", true, &on, true, false), "all user extensions off");
+        assert!(!needs_relogin("ubuntu:GNOME", false, &on, false, false), "not installed");
+        assert!(!needs_relogin("KDE", true, &on, false, false), "not GNOME");
+        assert!(!needs_relogin("", true, &on, false, false), "unknown desktop");
+    }
 
     fn files(items: &[(&str, &str)]) -> Files {
         items.iter().map(|(p, c)| (p.to_string(), c.as_bytes().to_vec())).collect()

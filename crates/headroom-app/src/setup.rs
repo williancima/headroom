@@ -136,17 +136,13 @@ fn install_wrapper(image: &Path) {
 /// Adds the extension to GNOME's enabled list the first time it is installed; never again, since the user may
 /// have switched it off.
 pub fn enable_extension_once() {
-    let installed = Path::new("/usr/share/gnome-shell/extensions").join(EXTENSION_UUID).join("metadata.json").is_file()
-        || user_extension_dir().join("metadata.json").is_file();
     let state = dirs_state().join("extension_enabled");
-    if !installed || state.exists() {
+    if !extension_installed() || state.exists() {
         return;
     }
-    let has_schema = gio::SettingsSchemaSource::default().is_some_and(|s| s.lookup("org.gnome.shell", true).is_some());
-    if !has_schema {
+    let Some(shell) = shell_settings() else {
         return;
-    }
-    let shell = gio::Settings::new("org.gnome.shell");
+    };
     let list: Vec<String> = shell.strv("enabled-extensions").iter().map(|s| s.to_string()).collect();
     if let Some(next) = with_path(&list, EXTENSION_UUID) {
         if let Err(error) = shell.set_strv("enabled-extensions", next) {
@@ -159,6 +155,28 @@ pub fn enable_extension_once() {
     if let Err(error) = marked {
         eprintln!("{NAME}: could not save that the extension was enabled: {error}");
     }
+}
+
+fn extension_installed() -> bool {
+    Path::new("/usr/share/gnome-shell/extensions").join(EXTENSION_UUID).join("metadata.json").is_file()
+        || user_extension_dir().join("metadata.json").is_file()
+}
+
+/// `org.gnome.shell` settings, when the schema exists (GNOME Shell is installed).
+fn shell_settings() -> Option<gio::Settings> {
+    let has_schema = gio::SettingsSchemaSource::default().is_some_and(|s| s.lookup("org.gnome.shell", true).is_some());
+    has_schema.then(|| gio::Settings::new("org.gnome.shell"))
+}
+
+/// True when the extension is installed and enabled but this session's Shell has not loaded it. Blocking D-Bus call.
+pub fn needs_relogin() -> bool {
+    let Some(shell) = shell_settings() else {
+        return false;
+    };
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let enabled: Vec<String> = shell.strv("enabled-extensions").iter().map(|s| s.to_string()).collect();
+    let off = shell.boolean("disable-user-extensions");
+    crate::setup_logic::needs_relogin(&desktop, extension_installed(), &enabled, off, crate::tray::extension_present())
 }
 
 /// Same folder as the store's state files.

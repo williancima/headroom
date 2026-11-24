@@ -6,6 +6,8 @@ panel: the tray text becomes the top-bar label, and clicking it opens a dropdown
 
 ## Install
 
+After installing, log out and back in once: GNOME only loads a newly installed extension at login.
+
 The `.deb` installs the extension system-wide. The AppImage copies it to
 `~/.local/share/gnome-shell/extensions/headroom@headroom.dev/` every time it starts (changed files are
 replaced, files that are no longer shipped are removed) and writes `~/.local/bin/headroom`, a script that runs
@@ -20,6 +22,11 @@ the app. The AppImage needs one start, then a log out and back in, so GNOME load
 GNOME keeps a removed extension's code running until the next login, so the extension watches its own
 folder: after `apt remove headroom` deletes it, the top-bar item goes away at once (and comes back if the
 package is reinstalled in the same session).
+
+Until that login, the panel shows a banner, "Log out and back in to finish setting up Headroom.", each time it
+opens. It shows only on GNOME, when the extension is installed and in GNOME's enabled list (and user extensions
+aren't switched off) but `dev.headroom.Extension` has no owner on the session bus. **Dismiss** hides it until
+the app restarts.
 
 To install it from source instead:
 

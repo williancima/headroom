@@ -1,6 +1,6 @@
 # Settings
 
-The **Settings** window holds the options of `headroom-app`. Open it with the gear button in the panel's
+The **Settings** window holds the options of `headroom-app`. Open it from the main menu in the panel's
 header or the settings button in the [GNOME extension](gnome-extension.md) dropdown (which opens the panel
 window on top of it). Every change saves at once and applies without a restart.
 

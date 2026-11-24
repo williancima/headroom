@@ -17,17 +17,30 @@ Inspired by [OpenUsage](https://github.com/robinebers/openusage) by Robin Ebers.
 
 Download the `.deb` or the AppImage from [GitHub Releases](https://github.com/williancima/headroom/releases).
 
-- **.deb**: `sudo apt install ./headroom_*.deb`. It also installs the GNOME Shell extension system-wide, and
-  adds the Headroom APT repository so the system's automatic updates keep it current; see
-  [docs/updates.md](docs/updates.md).
-- **AppImage**: `chmod +x Headroom-x86_64.AppImage` and run it. It uses the GTK4 and libadwaita of your system
-  (GNOME 46 or later). On start it installs the GNOME Shell extension in your user folder and writes the
-  `headroom` command the extension needs to `~/.local/bin`. It also updates itself; see
-  [docs/updates.md](docs/updates.md).
+### .deb
 
-The first time it runs with the extension installed, the app turns the extension on. Log out and back in once
-so GNOME loads it. Until then the app runs with its panel only. Details in
-[docs/gnome-extension.md](docs/gnome-extension.md).
+1. `sudo apt install ./headroom_*.deb`
+2. **Log out and back in.** GNOME only loads a newly installed extension at login; Headroom shows up in the
+   top bar after that.
+
+The package also adds the Headroom APT repository so the system's automatic updates keep it current; see
+[docs/updates.md](docs/updates.md).
+
+### AppImage
+
+1. `chmod +x Headroom-x86_64.AppImage` and run it once. It installs the GNOME Shell extension in your user
+   folder and writes the `headroom` command the extension needs to `~/.local/bin`.
+2. **Log out and back in.** GNOME only loads a newly installed extension at login.
+
+It uses the GTK4 and libadwaita of your system (GNOME 46 or later) and updates itself; see
+[docs/updates.md](docs/updates.md).
+
+### Before you log out
+
+If you open Headroom before logging out, it runs without the top-bar item: Ubuntu shows a tray icon instead
+(through its AppIndicator extension), and other GNOME setups show only the panel. The panel shows "Log out and
+back in to finish setting up Headroom." until you do. After logging in, the top-bar item replaces the tray
+icon. Details in [docs/gnome-extension.md](docs/gnome-extension.md).
 
 ## Build from source
 

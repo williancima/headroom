@@ -53,6 +53,7 @@ pub enum PanelMsg {
     Notify(Vec<headroom_core::notify::Notice>),
     Toggle,
     Show,
+    DismissRelogin,
     Quit,
 }
 
@@ -70,6 +71,9 @@ pub struct Panel {
     history: History,
     model: Option<PanelModel>,
     toasts: adw::ToastOverlay,
+    /// "Log out and back in" while GNOME hasn't loaded the newly installed extension; hidden for the session once dismissed.
+    relogin: adw::Banner,
+    relogin_dismissed: bool,
     commands: UnboundedSender<Command>,
     /// Keeps the app alive while the window is hidden.
     _hold: gio::ApplicationHoldGuard,
@@ -264,17 +268,20 @@ impl SimpleComponent for Panel {
         people.connect_clicked(move |_| {
             let _ = input.send(PanelMsg::ShowAccounts);
         });
+        let menu = gio::Menu::new();
+        menu.append(Some("Settings"), Some("app.settings"));
+        menu.append(Some("Quit"), Some("app.quit"));
+        let main_menu = gtk::MenuButton::builder().icon_name("open-menu-symbolic").menu_model(&menu).primary(true).build();
+        main_menu.update_property(&[gtk::accessible::Property::Label("Main Menu")]);
+        main_menu.set_tooltip_text(Some("Main Menu"));
+        header.pack_end(&main_menu);
         header.pack_end(&people);
-        let gear = gtk::Button::from_icon_name("emblem-system-symbolic");
-        gear.update_property(&[gtk::accessible::Property::Label("Settings")]);
-        gear.set_tooltip_text(Some("Settings"));
-        let input = sender.input_sender().clone();
-        gear.connect_clicked(move |_| {
-            let _ = input.send(PanelMsg::ShowSettings);
-        });
-        header.pack_end(&gear);
         let view = adw::ToolbarView::new();
         view.add_top_bar(&header);
+        let relogin = adw::Banner::builder().title("Log out and back in to finish setting up Headroom.").button_label("Dismiss").build();
+        let input = sender.input_sender().clone();
+        relogin.connect_button_clicked(move |_| drop(input.send(PanelMsg::DismissRelogin)));
+        view.add_top_bar(&relogin);
         view.set_content(Some(&stack));
         let nav = adw::NavigationView::new();
         nav.add(&adw::NavigationPage::new(&view, "Headroom"));
@@ -302,6 +309,7 @@ impl SimpleComponent for Panel {
         action("refresh", &[|| PanelMsg::Refresh]);
         action("accounts", &[|| PanelMsg::Show, || PanelMsg::ShowAccounts]);
         action("quit", &[|| PanelMsg::Quit]);
+        app.set_accels_for_action("app.quit", &["<primary>q"]);
         action("show", &[|| PanelMsg::Show]);
         action("settings", &[|| PanelMsg::Show, || PanelMsg::ShowSettings]);
         // The Toggle Shortcut's keybinding calls this. With the GNOME Shell extension, its menu opens instead.
@@ -330,7 +338,7 @@ impl SimpleComponent for Panel {
 
         let hold = app.hold();
         let resets = Resets::new(sender.input_sender().clone(), commands.clone());
-        ComponentParts { model: Panel { window, refresh, copy, stack, priority, usage, nav, accounts, add, resets, history: History::default(), model: None, toasts, commands, _hold: hold }, widgets: () }
+        ComponentParts { model: Panel { window, refresh, copy, stack, priority, usage, nav, accounts, add, resets, history: History::default(), model: None, toasts, relogin, relogin_dismissed: false, commands, _hold: hold }, widgets: () }
     }
 
     fn update(&mut self, msg: PanelMsg, _sender: ComponentSender<Self>) {
@@ -382,7 +390,14 @@ impl SimpleComponent for Panel {
                 }
             }
             PanelMsg::Toggle if self.window.is_visible() => self.window.set_visible(false),
-            PanelMsg::Toggle | PanelMsg::Show => self.window.present(),
+            PanelMsg::Toggle | PanelMsg::Show => {
+                self.relogin.set_revealed(!self.relogin_dismissed && crate::setup::needs_relogin());
+                self.window.present();
+            }
+            PanelMsg::DismissRelogin => {
+                self.relogin_dismissed = true;
+                self.relogin.set_revealed(false);
+            }
             PanelMsg::Quit => relm4::main_application().quit(),
         }
     }

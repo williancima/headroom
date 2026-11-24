@@ -1,11 +1,11 @@
 # Dashboard
 
 The panel opens from the [tray icon](tray.md) or from the GNOME top-bar dropdown. It contains two tabs
-(Priority and All Usage), a refresh button, a copy button, and buttons for **Accounts** and **Settings**.
+(Priority and All Usage), a refresh button, a copy button, an **Accounts** button, and the main menu with **Settings** and **Quit**.
 See [Settings](settings.md).
 
 - Without accounts, each tab offers **Add Account**.
-- Closing the panel only hides it; the app continues to run.
+- Closing the panel only hides it; the app continues to run. **Quit** in the main menu (or Ctrl+Q) stops it.
 
 ## Priority
 
